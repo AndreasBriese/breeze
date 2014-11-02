@@ -90,6 +90,8 @@ Import the module within the import header of your code:
 	
 	import "github.com/AndreasBriese/breeze"
 	import "bytes" // for byte comparison in the XOR exmaple
+	import "fmt"
+	import "io/ioutil"
 	
 	func main(){
 		// 
@@ -112,7 +114,7 @@ Import the module within the import header of your code:
 		fmt.Printf("%x\n", hash)
 		// get the same hash result
 		hmap72.Reset() // Init() will reset all internal states
-		hash = hhmap72.ShortHash(wordToHash, 128) // second parameter for length of hash in bytes
+		hash = hmap72.ShortHash(wordToHash, 128) // second parameter for length of hash in bytes
 		fmt.Printf("%x\n", hash)
 		
 		// use hash with previous initialization results in different hash
@@ -134,7 +136,7 @@ Import the module within the import header of your code:
 			panic(1)
 		}
 		out := make([]byte, len(in))
-		key := "xor my file"
+		key := []byte("xor my file")
 
 		var lmap32 breeze.Breeze32
 		lmap32.XOR(&out, &in, &key)
