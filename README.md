@@ -144,7 +144,6 @@ Import the module within the import header of your code:
 
 		lmap32.Reset()
 		lmap32.XOR(&out, &out, &key)
-		fmt.Println(bytes.Equal(out, in))
 		fmt.Println("in and out are the same again:", bytes.Equal(out, in)) // true
 		
 		// Have in mind, using Init() before XOR will result in a totally different result
