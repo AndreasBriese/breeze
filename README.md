@@ -58,7 +58,6 @@ The roundTrip() function calculates the next results of the two (or more) logist
 
 **4) Composition of output (Byte, ByteMP, XOR, ShortHash)**
 
-
 <b>Breeze</b> provides examplary output formats for different purposes.
 
 - the Byte(&byt) function sets the variable byt to the next byte (uint8/byte) from breeze's byte register.
@@ -144,28 +143,28 @@ Import the module within the import header of your code:
 
 		lmap32.Reset()
 		lmap32.XOR(&out, &out, &key)
-		fmt.Println("in and out are the same again:", bytes.Equal(out, in)) // true
+		fmt.Println("in and out are the same again:", bytes.Equal(out, in), "\n") // true
 		
 		// Have in mind, using Init() before XOR will result in a totally different result
 		var lmap72 breeze.Breeze72
 		lmap72.Init(1.899999) // sets all internal states and bitshift
 		lmap72.XOR(&out, &in, &key)
-		fmt.Println("in and out are the same", bytes.Equal(out, in)) // false
+		fmt.Println("with Init(): in and out are the same:", bytes.Equal(out, in)) // false
 		
 		lmap72.Reset()
 		lmap72.Init(1.899999) // sets all internal states and bitshift
 		lmap72.XOR(&out, &out, &key)
-		fmt.Println("in and out are the same again:", bytes.Equal(out, in))  // true
+		fmt.Println("with Init(): in and out are the same again using :", bytes.Equal(out, in))  // true
 		
 		lmap72.Reset()
 		lmap72.Init(1.899999)
 		lmap72.XOR(&out, &in, &key)
-		fmt.Println("in and out are the same", bytes.Equal(out, in)) // false
+		fmt.Println("with Init(): in and out are the same:", bytes.Equal(out, in)) // false
 		
 		lmap72.Reset()
 		// lmap72.Init(1.899999) // leaving out Init() will break the xor decoding  
 		lmap72.XOR(&out, &out, &key)
-		fmt.Println("in and out are the same", bytes.Equal(out, in)) // false
+		fmt.Println("xor decode without Init() will fail: in and out are the same:", bytes.Equal(out, in)) // false
 		
 	}
 
