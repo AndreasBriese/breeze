@@ -50,7 +50,7 @@ The init() function takes a wide range of input types to processes an uint64-Arr
 
 **2) Initialization**
 
-The seedr() function takes an []uint64, splits each field into two fragments, that are used to calculate two *startseeds* of the two logmap functions. Each *startseed* is limited to 0..1<<26 and controlled to be different to known "pathological" values and in case corrected and type-casted to float64 before inverted (1/startseed). The "overhead" (upper-bound bytes) of the above limiting operation determines the number of startrounds within initialization.  
+The seedr() function takes an []uint64 and splits each field into two fragments, that are used to calculate two *startseeds* of the two logmap functions. Each *startseed* is limited to 0..1<<26 and controlled to be different to known "pathological" values and in case corrected and type-casted to float64 before inverted (1/startseed). The "overhead" (upper-bound bytes) of the above limiting operation determines the number of startrounds within initialization.  
 
 **3) Generator core**
 
@@ -269,7 +269,7 @@ Initialization time of Breeze32/Breeze72 depended on the given seed (*startround
 
 
 ### The Breeze License
-####LICENSE -- 
+####LICENSE  
 Breeze is published with a MIT-TYPE LICENSE with an ADDITIONAL RESTRICTIVE CLAUSE about Breeze implementations in hardware
 
 Copyright (c) 2014 Andreas Briese <ab@edutoolbox.de>, 31157 Sarstedt, Gernmany
@@ -300,7 +300,7 @@ Furthermore i'ld really appreciate to have less problems to feed my family in fu
 
 The **logistic map** (LM) seems to be a well studied phenomenom (https://en.wikipedia.org/wiki/Logistic_map for more information). The formula for the logistic map 
 
-x<sub>n</sub> = kx<sub>n-1</sub>--x<sub>n-1</sub><sup>2</sup> = kx<sub>n-1</sub> &sdot; (1--x<sub>n-1</sub>) 
+x<sub>n</sub> = kx<sub>n-1</sub>-x<sub>n-1</sub><sup>2</sup> = kx<sub>n-1</sub> &sdot; (1-x<sub>n-1</sub>) 
 
 will get (in theorie) into chaotic state at 0 &lt; x &lt; 1 and 3.56995 &lt; k &lt; 3.82843 and at 3.82843 &lt; k &lt;= 4.0 
 (https://en.wikipedia.org/wiki/Logistic_map) and (in a theoretically unfinite space of real numbers) all following results will be &gt; 0 and &lt; 1 and therefore conserve the chaotic state *ad infinitum*. It's  impossible to predict the next outcome from the input value. Furthermore one can not forcast if the next outcome will be larger or smaller than the input value without actually calculating. LM behaviour in chaotic state is consequently very "randomnous". 
@@ -346,17 +346,17 @@ No, let's take a closer look. What are the central arguments against their use i
 
 Let's take an example:
 
-Logistic map with k = 4; 0 &lt; x &lt; 1 ==> x<sub>n</sub> = 4x<sub>n-1</sub>&sdot;(1 -- x<sub>n-1</sub>) [1] 
+Logistic map with k = 4; 0 &lt; x &lt; 1 ==> x<sub>n</sub> = 4x<sub>n-1</sub>&sdot;(1 - x<sub>n-1</sub>) [1] 
 
 a.) Deadlocks are x = 1/4 and x = 3/4 leading to output: 0.75 .. 0.75 .. 0.75 ..
 
-set x<sub>n-1</sub> = 1/4 : results in 4 &sdot; 1/4 &sdot; (1 -- 1/4) = 1 &sdot; 3/4 = 3/4 = 0.75 
+set x<sub>n-1</sub> = 1/4 : results in 4 &sdot; 1/4 &sdot; (1 - 1/4) = 1 &sdot; 3/4 = 3/4 = 0.75 
 
-set x<sub>n-1</sub> = 3/4 : results in 4 &sdot; 3/4 &sdot; (1 -- 3/4) = 3 &sdot; 1/4 = 3/4 = 0.75
+set x<sub>n-1</sub> = 3/4 : results in 4 &sdot; 3/4 &sdot; (1 - 3/4) = 3 &sdot; 1/4 = 3/4 = 0.75
 
 b.) Additionally a deadlock with x = 1/2 output is: 1.0 .. 0 .. 0 .. 0 ..
 
-set x<sub>n-1</sub> = 1/2 : results in 4 &sdot; 1/2 &sdot; (1 -- 1/2) = 2 &sdot; 1/2 = 2/2 = 1.0 .. =&gt; 4 &sdot; 1 &sdot; (1 -- 1) = 0
+set x<sub>n-1</sub> = 1/2 : results in 4 &sdot; 1/2 &sdot; (1 - 1/2) = 2 &sdot; 1/2 = 2/2 = 1.0 .. =&gt; 4 &sdot; 1 &sdot; (1 - 1) = 0
 
 c.) If x becomes very small, the float rounding might result in x = 0 which blocks the map function; 
 
@@ -375,7 +375,7 @@ d.) Empirically long sequences of rounded numbers show up with lim 1 or lim 0; i
 
 Implement another "permanent reseeding" of the logistic maps resulting in:
  
-x<sub>n</sub> = k&sdot;(1 -- x<sub>n-1</sub>) &sdot;(1 -- (1 -- x<sub>n-1</sub>))
+x<sub>n</sub> = k&sdot;(1 - x<sub>n-1</sub>) &sdot;(1 - (1 - x<sub>n-1</sub>))
 
     (S2) After each calculation reseed the map with 1-x ("mirror x at 1")
 
@@ -383,28 +383,29 @@ This approach would break the map in theoretical math, but if done in the comput
 
 Here i present a new mathematical 'dilemma' for IEEE 754 float arithmetics :-)
 
-    'IEEE 754 dilemma' for float numbers d with 0 < d < 1: mostly x != 1 - (1 - x) but if and only if x can be represented exactly by 1/2 + 1/2^2+ .. + 1/2^len(mantissa) x == 1 - (1 - x)
-
+    'IEEE 754 dilemma' for float numbers d with 0 < d < 1: mostly x != 1 - (1 - x) 
+	but if and only if x can be represented exactly by 1/2 + 1/2^2+ .. + 1/2^len(mantissa) 
+	then x == 1 - (1 - x)
 	
 <center>... some more staring at floating point number sequences, reading and puzzling ...</center>
 
 Another example:
 
-Logistic map with k = 3.9; 0 &lt; x &lt; 1 ==> x<sub>n</sub> = 3.9&sdot;x<sub>n-1</sub> &sdot;(1 -- x<sub>n-1</sub>) [2]
+Logistic map with k = 3.9; 0 &lt; x &lt; 1 ==> x<sub>n</sub> = 3.9&sdot;x<sub>n-1</sub> &sdot;(1 - x<sub>n-1</sub>) [2]
 
 a.) Yes, we have deadlocks but NOT x = 1/4 and x = 3/4 as in [1]
 
-set x<sub>n-1</sub> = 1/4 : results in 39/10 &sdot; 1/4 &sdot; (1 -- 1/4) = 39/40 &sdot; 3/4 = **117/1600 != 0.75** 
+set x<sub>n-1</sub> = 1/4 : results in 39/10 &sdot; 1/4 &sdot; (1 - 1/4) = 39/40 &sdot; 3/4 = **117/1600 != 0.75** 
 
-set x<sub>n-1</sub> = 3/4 : results in 39/10 &sdot; 3/4 &sdot; (1 -- 3/4) = 117/10 &sdot; 1/4 = **117/40 != 0.75**
+set x<sub>n-1</sub> = 3/4 : results in 39/10 &sdot; 3/4 &sdot; (1 - 3/4) = 117/10 &sdot; 1/4 = **117/40 != 0.75**
 
 b.) No deadlock at x = 1/2 -&gt; output is NOT : 1.0 .. 0 .. 0 .. 0 .. as in [1]
 
-set x<sub>n-1</sub> = 1/2 : results in 39/10 &sdot; 1/2 &sdot; (1 -- 1/2) = 39/10 &sdot; 1/2 = **39/20 != 1.0**
+set x<sub>n-1</sub> = 1/2 : results in 39/10 &sdot; 1/2 &sdot; (1 - 1/2) = 39/10 &sdot; 1/2 = **39/20 != 1.0**
 
-c.) If x becomes very small, the float rounding might result in x = 0 -- solved by (S1)
+c.) If x becomes very small, the float rounding might result in x = 0 ; solved by (S1)
 
-d.) Long sequences of rounded numbers with lim 1 or lim 0 ... -- solved by (S2)
+d.) Long sequences of rounded numbers with lim 1 or lim 0 ... ; solved by (S2)
 
    <center>... ding-dong ...</center>
 
@@ -492,9 +493,11 @@ The first 'hard problem' will be to guess the number of roundTrips at initializa
 
 Then the attacker will reach the point, that he cannot reverse calculate the preceeding state because of (S2) and the above 'IEEE 754 dilemma':
 
-    'IEEE 754 dilemma' for float numbers d with 0 < d < 1: mostly x != 1 - (1 - x) but if and only if x can be represented exactly by 1/2 + 1/2^2+ .. + 1/2^len(mantissa) x == 1 - (1 - x)
+    'IEEE 754 dilemma' for float numbers d with 0 < d < 1: mostly x != 1 - (1 - x) 
+	but if and only if x can be represented exactly by 1/2 + 1/2^2+ .. + 1/2^len(mantissa) 
+	then x == 1 - (1 - x)
 
-(S2) results in an information loss each time of roundTrip. In this distinct the breeze algorithm is likely to be an "one-way function". 
+(S2) results in a hard to recover information loss each time of roundTrip. In this distinct the breeze algorithm is likely to be an "one-way function".  
 
 **5.) Calculate the next output with insights into all internal states**
 
