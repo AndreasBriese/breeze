@@ -54,7 +54,7 @@ The seedr() function takes an []uint64 and splits each field into two fragments,
 
 **3) Generator core**
 
-The roundTrip() function calculates the next results of the two (or more) logistic map equations. Each equation x<sub>n</sub> = k &sdot; x<sub>n-1</sub> &sdot; (1 -- x<sub>n-1</sub>) has a different k with 3.82843 &lt; k &lt;= 4.0 to generate a chaotic state with 0 &lt; x &lt; 1 (see: startseed preparation). The calculation results are mirrored at 1.0 and exchanged between the two (ore more) map functions. They form the actual two (or more) states of the generator and their normalized mantissa ("significand field") is the source of entropy from which four (or more) uint64 fields derive that form the byteregister of breeze. In between a bitshift variable is used to enhance variability of the byteregister-generation and furthermore the byte registers are transposed after each roundTrip to ensure that all registers profitize directly from the generator entropy.           
+The roundTrip() function calculates the next results of the two (or more) logistic map equations. Each equation x<sub>n</sub> = k &sdot; x<sub>n-1</sub> &sdot; (1 - x<sub>n-1</sub>) has a different k with 3.82843 &lt; k &lt;= 4.0 to generate a chaotic state with 0 &lt; x &lt; 1 (see: startseed preparation). The calculation results are mirrored at 1.0 and exchanged between the two (ore more) map functions. They form the actual two (or more) states of the generator and their normalized mantissa ("significand field") is the source of entropy from which four (or more) uint64 fields derive that form the byteregister of breeze. In between a bitshift variable is used to enhance variability of the byteregister-generation and furthermore the byte registers are transposed after each roundTrip to ensure that all registers profitize directly from the generator entropy.           
 
 **4) Composition of output (Byte, ByteMP, XOR, ShortHash)**
 
@@ -369,7 +369,9 @@ d.) Empirically long sequences of rounded numbers show up with lim 1 or lim 0; i
     (S1) Reseed the map if a map results in zero 
 
 
-   <center>... it took me some weeks to stare at floating point number sequences, reading and puzzling ...</center>
+<center>... it took me some weeks to stare at floating point number sequences, reading and puzzling ...</center>
+   
+   
    
 **This is my solution for *d.)*:**
 
@@ -407,17 +409,22 @@ c.) If x becomes very small, the float rounding might result in x = 0 ; solved b
 
 d.) Long sequences of rounded numbers with lim 1 or lim 0 ... ; solved by (S2)
 
-   <center>... ding-dong ...</center>
+
+
+<center>... ding-dong ...</center>
+
+
 
 **And this is the solution for *a.)*, *b.)*:**
 
-    (S3) Combine two (or more) logistic map functions with different k-values by "reseeding" them from each other
+    (S3) Combine two (or more) logistic map functions with different k-values 
+	by "reseeding" them from each other
 
 ---
 
 ###Expand the mining capacity of the logistic map (LM)
 
-Soma approaches use LM by emitting one bit from each calculation result. This can be done by evaluating the difference to the preceeding result (higher/lower) or by evaluating x >= 0.5 (limis logmap results/length). Persohn and Povinelli (2012) resumed, CB-PRNG proved to be ineffective and slow compared to classical LCG - guess, that's appropriate if looking at the above mentioned bit generation scheme.
+Some approaches use LM by emitting one bit from each calculation result. This can be done by evaluating the difference to the preceeding result (higher/lower) or by evaluating x >= 0.5 (limis logmap results/length). Persohn and Povinelli (2012) resumed, CB-PRNG proved to be ineffective and slow compared to classical LCG - i guess, that is an appropriate resumee if looking at the above mentioned bit generation scheme.
 
 But IEEE 754 double floating point values &gt;0 and &lt;1 can store more than one bit of entropy from chaos. **Breeze** uses 28 to 51 bits of the normalized mantissa (“significand field”) of each logistic map output. Since this is smaller than uint64's capacity two (or more) map states are combined to compute output states using an ARX algorithm. 
 
