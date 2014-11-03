@@ -44,9 +44,9 @@ The following documentation is intended to give an overview about the functional
 
 The init() function takes a wide range of input types to processes an uint64-Array that is delivered to the seedr() function.
 
-- int, uint8/16/32/64, int8/16/32/64 is typecasted and copied directly to l.seed
-- float32/64 are bitwise upshifted by 8/11 bits and copied to l.seed
-- string/[]byte is processed by sipHash's (see sipHash.go) compression function
+- int, uint8/16/32/64, int8/16/32/64 is typecasted and copied directly to seedr()
+- float32/64 are bitwise upshifted by 8/11 bits and feeded to seedr()
+- string/[]byte is processed by sipHash's (see sipHash.go) compression function returning two uint64
 
 **2) Initialization**
 
@@ -67,7 +67,7 @@ The roundTrip() function calculates the next results of the two (or more) logist
 
 (Output of various flavours of random int, random float will be added soon.)
 
-**Note:** ShortHash is NOT intended to hash files - it is foremost a internal function to init breeze's PRNG. The used function derives directly from Dmitry Chestnykhs go implementation of SipHash-2-4 ( https://github.com/dchest/siphash ) "a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein" ( https://131002.net/siphash/ ). The actual breeze code ( Breeze32 and Breeze72 ) utilizes sipHash's compressor to drains 64 Bit out of the []byte or string provided to seed the PRNG and it must be assumed that ShortHash() produces collisions. Collision suspectibility of short strings (i.e. up to 100 bytes) is lower than those within long strings (i.e. kilobytes).  
+**Note:** ShortHash is NOT intended to hash files - it is foremost a internal function to init breeze's PRNG. The used function derives directly from Dmitry Chestnykhs go implementation of SipHash-2-4 ( https://github.com/dchest/siphash ) "a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein" ( https://131002.net/siphash/ ). The actual breeze code ( Breeze32 and Breeze72 ) utilizes sipHash's compressor to drains 2 &times; uint64 out of the []byte or string provided to seed the PRNG and it must be assumed that ShortHash() produces collisions. Breeze32 processes only the first, Breeze72 uses both in seedr(). String/[]byte compression output numberspace is limited to 1<<64-1 and 1<<128-2 respectivly and collision suspectibility of short strings (i.e. up to 100 bytes) shall be lower than those of long strings (i.e. kilobytes).  
 
 **Note:** XOR() and ShortHash() do NOT reset the generator function automatically. Make sure this is the desired state by your programming logic or use the Reset() function before calling XOR/ShortHash.
 
