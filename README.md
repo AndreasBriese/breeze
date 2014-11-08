@@ -494,7 +494,7 @@ But IEEE 754 double floating point values &gt;0 and &lt;1 can store more than on
 
 If i did not misunderstood the concept of entropy, this means Breeze is based on min. entropy of number-of-LM &times; 2<sup>28</sup> up to max. number-of-LM &times; 2<sup>50</sup> depending on roundTrips the internal state of *bitshift*.  
 
-Breeze64_32 / Breeze128_72 emit four / nine uint64 (32 / 72 bytes) deriving from each roundTrip results by permutative shifting and xoring the two / three outputs from the logistic map functions. 
+Breeze128 / Breeze256 emit 16 / 32 uint64 (128 / 256 Bytes) deriving from each roundTrip results by permutative shifting and xoring the last outputs from the logistic map functions. 
 
 ---
 
