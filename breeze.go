@@ -136,8 +136,8 @@ func splittr(seed uint64) (s1, s2, s3 uint64) {
 // Breeze 128
 //
 // implements a cb-prng with four LM
-// seeds with two 64bit (uint64) -> four seeds 2**32 + startrounds
-// 128 Byte outputstate
+// seeds with two 64bit (uint64) -> 6 seeds 22/23 bit
+// 128 Byte output states
 type Breeze128 struct {
 	state          [16]uint64
 	state1, state2 float64
@@ -421,9 +421,9 @@ func (l *Breeze128) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 //
 // Breeze 256
 //
-// implements a cb-prng with eight LM
-// seeds with four 64bit (uint64) -> eight seeds 2**32 + startrounds
-// 256 Byte outputstate
+// implements a cb-prng with 8 LMs
+// seeds with four 64bit (uint64) -> 12 seeds 22/23 bit
+// 256 Byte output states
 type Breeze256 struct {
 	state                     [32]uint64
 	state1, state2, state3    float64
@@ -862,7 +862,7 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 //
 // implements a cb-prng with 16 LM
 // seeds with eight 64bit (uint64) -> 24 seeds 22/23 bit
-// 512 Byte outputstate
+// 512 Byte output states
 type Breeze512 struct {
 	state                     [64]uint64
 	state1, state2, state3    float64
