@@ -335,13 +335,14 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 	
 	breeze128 hash 8459.174 ns/op
 	breeze256 hash 4490.061 ns/op
+	breeze512 hash 13387.62 ns/op
 	sipHash-2-4 123.621 ns/op
 	md5 hash 1562.655 ns/op
 	sha256 hash 4368.62 ns/op
 	sha512 hash 2797.428 ns/op
    
 
-Initialization time of Breeze128/256 depended on the given seed (*startrounds* from seed preparation) but never exceeded the initialisation times of complMultiplyWithCarry or salsa20. XORing competes well with salsa20/8.
+Initialization time of Breeze128/256/512 dependeds on the number of startrounds roundTrips() to shift through the internal byteregister once; never exceeded the initialisation times of complMultiplyWithCarry or salsa20. XORing competes well with salsa20/8. Hash is slow because of much overhead - will be looked at in future.
 
 
 ---
