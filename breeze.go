@@ -446,6 +446,7 @@ func (l *Breeze256) Reset() {
 // Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
 // Init reseeds the LMs but it does NOT reset the prng:
 //    it seeds based on the previous output states, internal bitshift and idx values
+// Make sure, you Init with at minimum [2]uint64
 func (l *Breeze256) Init(s interface{}) (err error) {
 	var seed [4]uint64
 	switch s := s.(type) {
@@ -769,7 +770,7 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress([]byte(s))
-			seed = [4]uint64{seed1[0], seed1[1], seed1[0], seed1[1]}
+			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
@@ -790,7 +791,7 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress(s)
-			seed = [4]uint64{seed1[0], seed1[1], seed1[0], seed1[1]}
+			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress(s[0:16])
@@ -859,27 +860,24 @@ func (l *Breeze512) Reset() {
 // Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
 // Init reseeds the LMs but it does NOT reset the prng:
 //    it seeds based on the previous output states, internal bitshift and idx values
+// Make sure, you Init with at minimum [4]uint64
 func (l *Breeze512) Init(s interface{}) (err error) {
 	var seed [8]uint64
 	switch s := s.(type) {
 	case string:
-		if len(s) < 8 {
+		if len(s) < 16 {
 			return initSeedErr
-		}
-		if len(s) > 7 && len(s) < 17 {
-			seed1 := foldAndCompress([]byte(s))
-			seed = [8]uint64{seed1[0], seed1[1], uint64(0), uint64(0), uint64(0), uint64(0), uint64(0), uint64(0)}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
 			seed2 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], uint64(0), uint64(0), uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
 		}
 		if len(s) > 31 && len(s) < 48 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
 			seed2 := foldAndCompress([]byte(s[16:32]))
 			seed3 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
 		}
 		if len(s) > 47 && len(s) < 64 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
@@ -897,23 +895,19 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
 		}
 	case []byte:
-		if len(s) < 8 {
+		if len(s) < 16 {
 			return initSeedErr
-		}
-		if len(s) > 7 && len(s) < 17 {
-			seed1 := foldAndCompress(s)
-			seed = [8]uint64{seed1[0], seed1[1], uint64(0), uint64(0), uint64(0), uint64(0), uint64(0), uint64(0)}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress(s[0:16])
 			seed2 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], uint64(0), uint64(0), uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
 		}
 		if len(s) > 31 && len(s) < 48 {
 			seed1 := foldAndCompress(s[0:16])
 			seed2 := foldAndCompress(s[16:32])
 			seed3 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
 		}
 		if len(s) > 47 && len(s) < 64 {
 			seed1 := foldAndCompress(s[0:16])
