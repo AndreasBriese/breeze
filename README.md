@@ -4,7 +4,7 @@
 
 ####Dr. Andreas Briese
 #####2014/11/1   
-#####edu**Toolbox**@Bri-C GmbH, Sarstedt
+#####eduToolbox@Bri-C GmbH, Sarstedt
 </center> 
 
 2nd revision (7/11/2014): 
@@ -14,6 +14,11 @@
   - Seed processing reviewed / splitts uint64 bitwise in three parts: 2&times; 1<sup>21</sup>, 1&times;1<sup>22</sup>
   - Breeze128 and Breeze256 are intended for use with up to 128bit/256bit input length i.e. with BLAKE2b, SHA2 or SHA3 Hashes; Breeze64_32 &amp; Breeze128_72 are proof of concept schemes (see _breeze._go).
 
+3rd revision (9/11/2014):
+  - added Breeze512 (16 LMs) to provide length of keyspace: 512bit.
+  - parenthesis in roundTrip() ()all functions corr; statenumbers corrected to fit the new scheme
+
+**Note:** Breeze512 is not NIST tested so far, will do in the next days and will provide testresults below.(Its the same new scheme of AIX - should pass)
 
 ---
 
@@ -248,54 +253,61 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 
 	 Initialization timings
 
-	breeze128.init 14300 ns/op
-	breeze256.init 18469 ns/op
-	cmwcRand.init 22359 ns/op
-	salsa.init 25264 ns/op
+	cmwcRand.init 17660 ns/op
+	salsa.init 20672 ns/op
+	breeze128.init 12805 ns/op
+	breeze256.init 15523 ns/op
+	breeze512.init 8846 ns/op
 
 	Timings without initialisation
 
 	 round 0 
 
-	crypto/rand 67.2880935 ns/op
-	math/rand 33.71068345 ns/op
-	breeze128 5.47082824 ns/op
-	breeze256 5.4743165 ns/op
-	cmwcRand 7.4911459 ns/op
-	salsa 11.23936642 ns/op
+	crypto/rand 68.18179466 ns/op
+	math/rand 34.11473186 ns/op
+	breeze128 5.50920797 ns/op
+	breeze256 5.50827422 ns/op
+	breeze512 4.62195225 ns/op
+	cmwcRand 7.66446089 ns/op
+	salsa 11.75950922 ns/op
 
-	breeze128 mutex 21.31146651 ns/op
-	breeze256 mutex 21.29263455 ns/op
-	cmwcRand mutex 23.3755463 ns/op
-	salsa mutex 25.76831047 ns/op
+	breeze128 mutex 21.34793711 ns/op
+	breeze256 mutex 21.64219317 ns/op
+	breeze512 mutex 21.52251394 ns/op
+	cmwcRand mutex 23.58864442 ns/op
+	salsa mutex 26.15713672 ns/op
 
 	 round 1 
 
-	crypto/rand 66.88169832 ns/op
-	math/rand 33.69404816 ns/op
-	breeze128 5.47675462 ns/op
-	breeze256 5.46537299 ns/op
-	cmwcRand 7.51859212 ns/op
-	salsa 8.53736622 ns/op
+	crypto/rand 69.07768835 ns/op
+	math/rand 34.6467597 ns/op
+	breeze128 5.56105468 ns/op
+	breeze256 5.55432029 ns/op
+	breeze512 4.6326362 ns/op
+	cmwcRand 7.68528024 ns/op
+	salsa 8.55317278 ns/op
 
-	breeze128 mutex 21.01513908 ns/op
-	breeze256 mutex 21.05998925 ns/op
-	cmwcRand mutex 23.21304001 ns/op
-	salsa mutex 25.65345766 ns/op
+	breeze128 mutex 21.51130609 ns/op
+	breeze256 mutex 21.61977871 ns/op
+	breeze512 mutex 21.77746936 ns/op
+	cmwcRand mutex 24.3714749 ns/op
+	salsa mutex 26.19969086 ns/op
 
 	 round 2 
 
-	crypto/rand 66.59498245 ns/op
-	math/rand 33.67139348 ns/op
-	breeze128 5.62860217 ns/op
-	breeze256 5.53277191 ns/op
-	cmwcRand 7.52642542 ns/op
-	salsa 8.44888785 ns/op
+	crypto/rand 68.50893149 ns/op
+	math/rand 34.74860001 ns/op
+	breeze128 5.55343937 ns/op
+	breeze256 5.5923575 ns/op
+	breeze512 4.65723546 ns/op
+	cmwcRand 7.6424051 ns/op
+	salsa 8.68206779 ns/op
 
-	breeze128 mutex 20.98332299 ns/op
-	breeze256 mutex 21.06401988 ns/op
-	cmwcRand mutex 23.1560128 ns/op
-	salsa mutex 25.60704132 ns/op
+	breeze128 mutex 21.47309402 ns/op
+	breeze256 mutex 21.51226034 ns/op
+	breeze512 mutex 21.73368812 ns/op
+	cmwcRand mutex 23.82230121 ns/op
+	salsa mutex 26.15262398 ns/op
 
 	 file Xoring (1GB)
 
@@ -307,6 +319,11 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
     Breeze256 XOR: 2.825447323 s/GB  1000000000
 	in == out : false
 	Breeze256 XOR: 2.934852654 s/GB
+	in == out : true
+	
+	Breeze512 XOR: 2.866973379 s/GB  1000000000
+	in == out : false
+	Breeze512 XOR: 2.876473194 s/GB
 	in == out : true
 	
 	salsa XOR: 4.775279203 s/GB  1000000000
