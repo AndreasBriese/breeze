@@ -71,7 +71,7 @@ The Init() function takes a wide range of input types to processes an uint64-Arr
 
 Breeze256/Breeze512:
 
-The Init() function takes a string/[]byte of length 8 Byte/ 16 Byte or an []uint64 of length 2 / 4 
+The Init() function takes a string/[]byte of length 8 Byte or an []uint64 of length 1 
 
 BreezeCS128:
 
@@ -83,9 +83,9 @@ The Seedr() function takes an []uint64 and splits each field into three fragment
 
 **3) Generator core**
 
-The roundTrip() function calculates the next results of the two (or more) logistic map equations. Each equation x<sub>n</sub> = k &sdot; x<sub>n-1</sub> &sdot; (1 - x<sub>n-1</sub>) has a different k with 3.82843 &lt; k &lt;= 4.0 to generate a chaotic state with 0 &lt; x &lt; 1 (see: startseed preparation). The calculation results are mirrored at 1.0 (1-state) and interchanged within the inner states of the two (ore more) map functions. They form the actual two (or more) states of the generator. Their normalized mantissa ("significand field") is the source of entropy from which four (or more) uint64 fields derive, that form the byteregister of breeze. In between a bitshift variable is used to enhance variability of the byteregister-generation and furthermore the byte registers and inner states are transposed after each roundTrip to ensure that all registers profitize directly from the generator entropy. 
+The roundTrip() function calculates the next results of the two (or more) logistic map equations. Each equation x<sub>n</sub> = k &sdot; x<sub>n-1</sub> &sdot; (1 - x<sub>n-1</sub>) has a different k with  3.56995 &lt; k &lt; 3.82843 and 3.82843 &lt; k &lt;= 4.0 to generate a chaotic state with 0 &lt; x &lt; 1 (see: startseed preparation). The calculation results are mirrored at 1.0 (1-state) and interchanged within the inner states of the two (ore more) map functions. They form the actual two (or more) states of the generator. Their normalized mantissa ("significand field") is the source of entropy from which four (or more) uint64 fields derive, that form the byteregister of breeze. In between a bitshift variable is used to enhance variability of the byteregister-generation and furthermore the byte registers and inner states are transposed after each roundTrip to ensure that all registers profitize directly from the generator entropy. 
 
-roundTrip() checks for pathological state == 0 and will in case automatically reseed from previous states. In BreezeCS128 CSPRNG roundTrip() will autoreseed from go/golang crypto/rand XORed bytewise with time.Now().Nanosecond() instead. (Probability for autoreseeding was about LM/2:10^10 from emperical observations (1 in 1000 within 10^7 roundTrips of 2LMs)) 
+roundTrip() checks for pathological state == 0 and will in case automatically reseed from previous states. In BreezeCS128 CSPRNG roundTrip() will autoreseed from go/golang crypto/rand XORed bytewise with time.Now().Nanosecond() instead. (Probability for autoreseeding was about (6 LMs) 2:10^10 from emperical observations (18 in 100 within 10^9 roundTrips of 6 LMs)) 
 
 **4) Composition of output (Byte, ByteMP, XOR, ShortHash)**
 
@@ -107,17 +107,20 @@ roundTrip() checks for pathological state == 0 and will in case automatically re
 
 **Note:** XOR() and ShortHash() do NOT reset the generator function automatically. Make sure this is the desired state by your programming logic or use the Reset() function before calling XOR/ShortHash.
 
+
 ####Breeze internals
 
    | Breeze128 | Breeze256 | Breeze512 | BreezeCS128 |
 ---|---|---|---|---|
-minimum seed |  [1]uint64 | [2]uint64 | [4]uint64 | -- |
+minimum seed |  [1]uint64 | [1]uint64 | [1]uint64 | -- |
 maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* | auto-/reseed crypto/rand |
-no. of logistic maps (LM) | 4 LM | 8 LM | 16 LM | 4LM |
+no. of logistic maps (LM) | 6 LM | 12 LM | 24 LM | 6 LM |
 no. of internal LM states | 6 | 12 | 24 | 6 |
 output states | [16]uint64 | [32]uint32 | [64]uint32 | [16]uint64 |
 used memory (struct) | ~186 Byte | ~362 Byte | ~715 Byte | ~186 Byte |
+temp memory alloc | ~234 Byte | ~458 Byte | ~907 Byte | ~250 Byte | 
 
+(temp memory alloc: estimation from roundTrip() mem use; actual use might be higher)
 
 
 ---
@@ -292,7 +295,7 @@ Import the module within the import header of your code:
 
 The primary aim of investigating into CB-PRNG was a need for a second PRNG of comparable speed beside Daniel J. Bernsteins Salsa20 in a bytewise XOR mixing scheme for steganography.  
 
-The two breeze candidates Breeze64_32, Breeze128_72, Breeze128, Breeze256 were compared to Go's math.random, Go's crypto/rand, complimentary-multiply-with-carry (adapted from http://de.wikipedia.org/wiki/Multiply-with-carry) and salsa20 (https://code.google.com/p/go/source/browse/salsa20/salsa20.go?repo=crypto with an additional byte draining function) regarding their speed of random byte emission (10.000-10,000.000.000 byte) and with salsa20 about XORing speed of 100MB and 1GB files using Core2Duo, Xeon, i5 and i7 powered PCs and laptops with OSX 10.6-10.9. 
+The breeze candidates Breeze128, Breeze256, Breeze512 and BreezeCS128 were compared to Go's math.random, Go's crypto/rand, complimentary-multiply-with-carry (adapted from http://de.wikipedia.org/wiki/Multiply-with-carry) and salsa20 (https://code.google.com/p/go/source/browse/salsa20/salsa20.go?repo=crypto with an additional byte draining function) regarding their speed of random byte emission (10.000-10,000.000.000 byte) and with salsa20 about XORing speed of 100MB and 1GB files using Core2Duo, Xeon, i5 and i7 powered PCs and laptops with OSX 10.6-10.9. 
 
 This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5; go1.3 darwin/amd64 compiled with i686-apple-darwin11-llvm-gcc-4.2 (GCC) 4.2.1 (Based on Apple Inc. build 5658) (LLVM build 2336.11.00) using 1 CPU at runtime:
 
@@ -300,97 +303,94 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 
 	 Initialization timings
 
-	cmwcRand.init 17660 ns/op
-	salsa.init 20672 ns/op
-	breeze128.init 12805 ns/op
-	breeze128CS.init 323525 ns/op
-	breeze256.init 15523 ns/op
-	breeze512.init 8846 ns/op
+	cmwcRand.init 23175 ns/op
+	salsa.init 25473 ns/op
+	breeze128.init 17652 ns/op
+	breezeCS128.init 422651 ns/op
+	breeze256.init 22541 ns/op
+	breeze512.init 38263 ns/op
 
-	Timings without initialisation
+	Timings excl. initialisation
 
 	 round 0 
 
-	crypto/rand 68.18179466 ns/op
-	math/rand 34.11473186 ns/op
-	breeze128 5.50920797 ns/op
-	breezeCS128 4.86843184 ns/op
-	breeze256 5.50827422 ns/op
-	breeze512 4.62195225 ns/op
-	cmwcRand 7.66446089 ns/op
-	salsa 11.75950922 ns/op
+	crypto/rand 66.91293224 ns/op
+	math/rand 33.64623132 ns/op
+	breeze128 5.24251114 ns/op
+	breezeCS128 4.94863994 ns/op
+	breeze256 5.19408767 ns/op
+	breeze512 5.21904625 ns/op
+	cmwcRand 7.96650826 ns/op
+	salsa 10.92033298 ns/op
 
-	breeze128 mutex 21.34793711 ns/op
-	breeze256 mutex 21.64219317 ns/op
-	breeze512 mutex 21.52251394 ns/op
-	cmwcRand mutex 23.58864442 ns/op
-	salsa mutex 26.15713672 ns/op
+	breeze128 mutex 21.09652961 ns/op
+	breeze256 mutex 21.16416018 ns/op
+	breeze512 mutex 21.13883682 ns/op
+	cmwcRand mutex 23.15235098 ns/op
+	salsa mutex 25.36474519 ns/op
 
 	 round 1 
 
-	crypto/rand 69.07768835 ns/op
-	math/rand 34.6467597 ns/op
-	breeze128 5.56105468 ns/op
-	breezeCS128 4.89398617 ns/op
-	breeze256 5.55432029 ns/op
-	breeze512 4.6326362 ns/op
-	cmwcRand 7.68528024 ns/op
-	salsa 8.55317278 ns/op
+	crypto/rand 66.37308781 ns/op
+	math/rand 33.74983039 ns/op
+	breeze128 5.30179365 ns/op
+	breezeCS128 4.91731842 ns/op
+	breeze256 5.25770132 ns/op
+	breeze512 5.3275761 ns/op
+	cmwcRand 8.07043497 ns/op
+	salsa 8.32984127 ns/op
 
-	breeze128 mutex 21.51130609 ns/op
-	breeze256 mutex 21.61977871 ns/op
-	breeze512 mutex 21.77746936 ns/op
-	cmwcRand mutex 24.3714749 ns/op
-	salsa mutex 26.19969086 ns/op
+	breeze128 mutex 21.34504535 ns/op
+	breeze256 mutex 21.62477203 ns/op
+	breeze512 mutex 21.46773236 ns/op
+	cmwcRand mutex 23.47656207 ns/op
+	salsa mutex 25.79886328 ns/op
 
 	 round 2 
 
-	crypto/rand 68.50893149 ns/op
-	math/rand 34.74860001 ns/op
-	breeze128 5.55343937 ns/op
-	breezeCS128 4.8759728 ns/op
-	breeze256 5.5923575 ns/op
-	breeze512 4.65723546 ns/op
-	cmwcRand 7.6424051 ns/op
-	salsa 8.68206779 ns/op
+	crypto/rand 66.27560318 ns/op
+	math/rand 33.65269396 ns/op
+	breeze128 5.21549991 ns/op
+	breezeCS128 4.85845871 ns/op
+	breeze256 5.20661327 ns/op
+	breeze512 5.21153689 ns/op
+	cmwcRand 7.92343511 ns/op
+	salsa 8.26453883 ns/op
 
-	breeze128 mutex 21.47309402 ns/op
-	breeze256 mutex 21.51226034 ns/op
-	breeze512 mutex 21.73368812 ns/op
-	cmwcRand mutex 23.82230121 ns/op
-	salsa mutex 26.15262398 ns/op
+	breeze128 mutex 21.10411362 ns/op
+	breeze256 mutex 21.24844821 ns/op
+	breeze512 mutex 21.10982657 ns/op
+	cmwcRand mutex 23.27960155 ns/op
+	salsa mutex 25.33713722 ns/op
 
 	 file Xoring (1GB)
 
-	Breeze128 XOR: 2.946517713 s/GB  1000000000
+	Breeze128 XOR: 2.808338704 s/GB  1000000000
 	in == out : false
-	Breeze128 XOR: 2.899416488 s/GB
+	Breeze128 XOR: 2.816419428 s/GB
 	in == out : true
-	
-    Breeze256 XOR: 2.825447323 s/GB  1000000000
+	Breeze256 XOR: 2.778572044 s/GB  1000000000
 	in == out : false
-	Breeze256 XOR: 2.934852654 s/GB
+	Breeze256 XOR: 2.783461739 s/GB
 	in == out : true
-	
-	Breeze512 XOR: 2.866973379 s/GB  1000000000
+	Breeze512 XOR: 2.864301834 s/GB  1000000000
 	in == out : false
-	Breeze512 XOR: 2.876473194 s/GB
+	Breeze512 XOR: 2.860537387 s/GB
 	in == out : true
-	
-	salsa XOR: 4.775279203 s/GB  1000000000
+	salsa XOR: 4.728022675 s/GB  1000000000
 	in == out : false
-	salsa XOR: 4.76333749 s/GB 
+	salsa XOR: 4.717172578 s/GB 
 	in == out : true
 	
 	 hash timings ( n = 1000 )
 	
-	breeze128 hash 8459.174 ns/op
-	breeze256 hash 4490.061 ns/op
-	breeze512 hash 13387.62 ns/op
-	sipHash-2-4 123.621 ns/op
-	md5 hash 1562.655 ns/op
-	sha256 hash 4368.62 ns/op
-	sha512 hash 2797.428 ns/op
+	breeze128 hash 1824.243 ns/op
+	breeze256 hash 4430.815 ns/op
+	breeze512 hash 14234.625 ns/op
+	sipHash-2-4 148.467 ns/op
+	md5 hash 1954.732 ns/op
+	sha256 hash 4051.646 ns/op
+	sha512 hash 3243.129 ns/op
    
 
 Initialization time of Breeze128/256/512 dependeds on the number of startrounds roundTrips() to shift through the internal byteregister once; never exceeded the initialisation times of complMultiplyWithCarry or salsa20. XORing competes well with salsa20/8. Hash is slow because of much overhead - will be looked at in future.
@@ -563,7 +563,7 @@ But IEEE 754 double floating point values &gt;0 and &lt;1 can store more than on
 
 If i did not misunderstood the concept of entropy, this means Breeze is based on min. entropy of number-of-LM &times; 2<sup>28</sup> up to max. number-of-LM &times; 2<sup>50</sup> depending on roundTrips the internal state of *bitshift*.  
 
-Breeze128 / Breeze256 / Breeze 512 emit 16 / 32 / 64 uint64 (128 / 256 / 512 Bytes) deriving from each roundTrip results by permutative shifting and xoring (expanding) the last outputs from the logistic map functions. 
+Breeze(CS)128 / Breeze256 / Breeze 512 emit 16 / 32 / 64 uint64 (128 / 256 / 512 Bytes) deriving from each roundTrip results by permutative shifting and xoring (expanding) the last outputs from the logistic map functions. 
 
 ---
 
@@ -612,19 +612,21 @@ Breeze is a deterministic RNG. That means, that any call of Breeze with the same
 
 The important question from a cryptoanalytic view would be, if given an attacker has (a) a part or (b) even the whole sequence of output he could guess the (A) inner state or (B) the input or seed at initialization can be assessed by any means easier than brute force attack (100% of the keyspace).
 
-The seed of the actually implemented Breeze128 is up to 128bit; Breeze256 uses up to 256bit. Four / eight LMs are run by 6 / 12 states that derive from the seeds. This scheme can easily be extended.  
+The seed of the actually implemented Breeze128 is up to 128bit; Breeze256 uses up to 256bit and Breeze512 seeds from 512bit. This scheme can easily be extended.  
 
-That said, even if you can provide many types of even longer keys to breeze, Breeze128's internal keyspace is effectivly 128 bit and Breeze256 has a keyspace of 256 bit. Bruteforce would need at minimum 2<sup>128</sup> / 2<sup>256</sup> different calls of Breeze128 / Breeze256 to recover an input/key from output, given the attacker has the full output and no additional (pre)seeding using the Init() function was done.
+BreezeCS128 seeds from 128bit urandom provided by go/golang crypt/random XORed with time.Now().Nanosecond() see csrand.go for details. If one of the states rounded to Zero, BreezeCS128 reseeds again from urandom.
 
-Best practice for stream cipher use is twofold:
+That said, even if you can provide many types of even longer keys to breeze, Breeze128's internal keyspace is effectivly 128 bit and Breeze256 has a keyspace of 256 bit; Breeze512's keyspace is 512bit. Bruteforce would need at minimum 2<sup>128</sup> / 2<sup>256</sup> / 2 <sup>512</sup>  different calls of Breeze128 / Breeze256 / Breeze512 to recover an input/key from output, given the attacker has the full output and no additional (pre- or re-)seeding using the Init() function was done.
+
+Best practice for stream cipher use is twofold (i.e. Breeze128):
 
 1. seed breeze with a key within keyspace (i.e. Breeze128 []uint64{uint64, uint64}),
 2. XOR(in, out, key) with a key string | []byte of arbitrary length (best:==16 Bytes for low collision) or []uint64{uint64, uint64}
 
 
-State-recovery from output means to guess all internal LM states from the output bytes. This should be a 'hard problem' because the output bytes derive from two or more mixed internal states mantissa fragments (steared by the internal variable *bitshift* [0..23] and always less than 52 bits to ensure information loss from internal states within the process) that are combined by an ARX algorithm and xored with their previous states. Furthermore with each rountTrip the output states are alternated in a circular way (state[0]<-state[1]; state[1]<-state[2] ... state[last]<-state[0]). 
+State-recovery from output means to guess all internal LM states from the output bytes. This should be a 'hard problem' because the output bytes derive from three or more mixed internal states mantissa fragments (steared by the internal variable *bitshift* [0..23] and always less than 52 bits to ensure information loss from internal states within the process) that are combined by an ARX algorithm and xored with their previous states. Furthermore with each rountTrip the inner states and output states are alternated (state[0]<-state[1]; state[1]<-state[2] ... state[last]<-state[0]). 
 
-BreezeCS128 follows the same logic as Breeze128 but uses Go/golangs interface to urandom (crypto/rand) XORed with time.Now().Nanosecond() for seeding as a CSPRNG instead. Autoresseding within roundTrip() uses the same approach (see module csrand.go). 
+BreezeCS128 follows the same logic as Breeze128 but uses Go/golangs interface to urandom (crypto/rand) XORed with time.Now().Nanosecond() for seeding as a CSPRNG instead. Auto-reseeding within roundTrip() uses the same approach (see module csrand.go). 
 
 **3.) Guessing next output from previous**
 
@@ -635,7 +637,7 @@ Taking into account the chaotic nature of logistic maps and the existings proves
 Even if an attacker knows 
  
  - all LMs k-values,
- - all LMs internal states, 
+ - all actual LMs internal states, 
  - the actual assignment of internal states to LMs (S3),  
  - internal bitshift-value (&sim; 1/3 number of roundTrips mod 23; -&gt; output composition).  
 
