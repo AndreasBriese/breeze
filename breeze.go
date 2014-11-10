@@ -44,7 +44,7 @@
 //
 // revision 2014/11/10:
 // any inner state has ist's own LM now: Breeze128: 6 LMs; Breeze 256: 12 LMs;  Breeze 512: 24 LMs;
-// added BreezeCS128 (6LMs) to provide fast CSPRNG from go/golangs crypto/rand (dev/urandom) -> csrand.go
+// added BreezeCS128 (4LMs) to provide fast CSPRNG from go/golangs crypto/rand (dev/urandom)
 //
 // // Breeze had not been cryptoanalysed.
 // // It is definitly not recommended to use Breeze and it's ShortHash() or XOR() functions in particular in any security sensitive or
@@ -473,9 +473,9 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 		if len(s) < 8 {
 			return initSeedToShort
 		}
-		if len(s) > 7 && len(s) < 17 {
+		if len(s) > 7 && len(s) < 16 {
 			seed1 := foldAndCompress([]byte(s))
-			seed = [4]uint64{seed1[0], seed1[1], uint64(0), uint64(0)}
+			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
@@ -491,9 +491,9 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 		if len(s) < 8 {
 			return initSeedArrayToShort
 		}
-		if len(s) > 7 && len(s) < 17 {
+		if len(s) > 7 && len(s) < 16 {
 			seed1 := foldAndCompress(s)
-			seed = [4]uint64{seed1[0], seed1[1], uint64(0), uint64(0)}
+			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress(s[0:16])
@@ -804,7 +804,7 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		if len(s) < 8 {
 			return hash, initSeedToShort
 		}
-		if len(s) > 7 && len(s) < 17 {
+		if len(s) > 7 && len(s) < 16 {
 			seed1 := foldAndCompress([]byte(s))
 			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
 		}
@@ -825,7 +825,7 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		if len(s) < 8 {
 			return hash, initSeedArrayToShort
 		}
-		if len(s) > 7 && len(s) < 17 {
+		if len(s) > 7 && len(s) < 16 {
 			seed1 := foldAndCompress(s)
 			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
 		}
@@ -901,8 +901,12 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 	var seed [8]uint64
 	switch s := s.(type) {
 	case string:
-		if len(s) < 16 {
+		if len(s) < 8 {
 			return initSeedToShort
+		}
+		if len(s) > 7 && len(s) < 16 {
+			seed1 := foldAndCompress([]byte(s))
+			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
@@ -931,8 +935,12 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
 		}
 	case []byte:
-		if len(s) < 16 {
-			return initSeedArrayToShort
+		if len(s) < 8 {
+			return initSeedToShort
+		}
+		if len(s) > 7 && len(s) < 16 {
+			seed1 := foldAndCompress(s)
+			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress(s[0:16])
@@ -1388,20 +1396,20 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		if len(s) < 8 {
 			return hash, initSeedToShort
 		}
-		if len(s) > 7 && len(s) < 17 {
+		if len(s) > 7 && len(s) < 16 {
 			seed1 := foldAndCompress([]byte(s))
-			seed = [8]uint64{seed1[0], seed1[1], uint64(0), uint64(0), uint64(0), uint64(0), uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
 			seed2 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], uint64(0), uint64(0), uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
 		}
 		if len(s) > 31 && len(s) < 48 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
 			seed2 := foldAndCompress([]byte(s[16:32]))
 			seed3 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
 		}
 		if len(s) > 47 && len(s) < 64 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
@@ -1425,20 +1433,20 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		if len(s) < 8 {
 			return hash, initSeedArrayToShort
 		}
-		if len(s) > 7 && len(s) < 17 {
+		if len(s) > 7 && len(s) < 16 {
 			seed1 := foldAndCompress(s)
-			seed = [8]uint64{seed1[0], seed1[1], uint64(0), uint64(0), uint64(0), uint64(0), uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress(s[0:16])
 			seed2 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], uint64(0), uint64(0), uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
 		}
 		if len(s) > 31 && len(s) < 48 {
 			seed1 := foldAndCompress(s[0:16])
 			seed2 := foldAndCompress(s[16:32])
 			seed3 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], uint64(0), uint64(0)}
+			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
 		}
 		if len(s) > 47 && len(s) < 64 {
 			seed1 := foldAndCompress(s[0:16])
