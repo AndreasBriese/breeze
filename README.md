@@ -22,6 +22,8 @@
 
 **2014/11/09 20:00 Last revision ensured proper seeding input size for Breeze256/51. Make sure you have the current version running** 
 
+**Note 2014/11/10** Experimental CSPRNG based on Breeze128 added: BreezeCS128. (re-)Seeds from crypto/rand. 
+
 ---
 
 <b>Breeze</b> represents a new family of deterministic random number generators aca pseudo random number generators (PRNGs) based on a combination of two or more "logistic maps" (LM) in chaotic state. 
@@ -72,13 +74,19 @@ Breeze256/Breeze512:
 
 The Init() function takes a string/[]byte of length 8 Byte/ 16 Byte or an []uint64 of length 2 / 4 
 
+BreezeCS128:
+
+Autoseeds from go/golang crypto/rand XOR bytewise with time.Now().Nanosecond(). RoundTrip() will reseed from go/golang crypto/rand XOR bytewise with time.Now().Nanosecond() too.
+
 **2) Initialization**
 
 The Seedr() function takes an []uint64 and splits each field into three fragments (2 &times; 21, 1 &times; 22), that are used to calculate three *startseeds* running with two logmap functions. Each *startseed* is limited to 0..1<<23 omitting "pathological" values and type-casted to float64 before inverted (1/startseed). The number of output states roughly determines the number of startrounds within initialization.  
 
 **3) Generator core**
 
-The RoundTrip() function calculates the next results of the two (or more) logistic map equations. Each equation x<sub>n</sub> = k &sdot; x<sub>n-1</sub> &sdot; (1 - x<sub>n-1</sub>) has a different k with 3.82843 &lt; k &lt;= 4.0 to generate a chaotic state with 0 &lt; x &lt; 1 (see: startseed preparation). The calculation results are mirrored at 1.0 (1-state) and interchanged within the inner states of the two (ore more) map functions. They form the actual two (or more) states of the generator. Their normalized mantissa ("significand field") is the source of entropy from which four (or more) uint64 fields derive, that form the byteregister of breeze. In between a bitshift variable is used to enhance variability of the byteregister-generation and furthermore the byte registers and inner states are transposed after each roundTrip to ensure that all registers profitize directly from the generator entropy.           
+The roundTrip() function calculates the next results of the two (or more) logistic map equations. Each equation x<sub>n</sub> = k &sdot; x<sub>n-1</sub> &sdot; (1 - x<sub>n-1</sub>) has a different k with 3.82843 &lt; k &lt;= 4.0 to generate a chaotic state with 0 &lt; x &lt; 1 (see: startseed preparation). The calculation results are mirrored at 1.0 (1-state) and interchanged within the inner states of the two (ore more) map functions. They form the actual two (or more) states of the generator. Their normalized mantissa ("significand field") is the source of entropy from which four (or more) uint64 fields derive, that form the byteregister of breeze. In between a bitshift variable is used to enhance variability of the byteregister-generation and furthermore the byte registers and inner states are transposed after each roundTrip to ensure that all registers profitize directly from the generator entropy. 
+
+roundTrip() checks for pathological state == 0 and will in case automatically reseed from previous states. In BreezeCS128 CSPRNG roundTrip() will autoreseed from go/golang crypto/rand XORed bytewise with time.Now().Nanosecond() instead. (Probability for autoreseeding was about LM/2:10^10 from emperical observations (1 in 1000 within 10^7 roundTrips of 2LMs)) 
 
 **4) Composition of output (Byte, ByteMP, XOR, ShortHash)**
 
@@ -92,22 +100,24 @@ The RoundTrip() function calculates the next results of the two (or more) logist
 - XOR(&out, &in, &key) seeds the breeze generator with the *key* bytes and bytes of *in* are xored with the generator bytes and an error.
 - ShortHash(&m, hashlen) returns a hash of length *hashlen* deriving from multiple roundsTrips and an error. 
 
+**Note:** Byte / ByteMP do not check if breeze had been initialized! Make sure you did so, before calling!
+
 **Note:** RandIntn and RandDbl are thread/multiprocessing save (mutex.locked). Must be initialized before call. This comes at the cost of about 80 times slower number generation than Byte() and about 8 times (sic! from 8 bytes) slower than ByteMP(). 
 
-**Note:** ShortHash is NOT intended to hash files - it is foremost a internal function to init breeze's PRNG for XOR. The used folding function derives directly from Dmitry Chestnykhs go implementation of SipHash-2-4 ( https://github.com/dchest/siphash ) "a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein" ( https://131002.net/siphash/ ). The actual breeze code utilizes sipHash's fold/compressor to drains 2 &times; uint64 out of the []byte or string provided to seed the PRNG and it must be assumed that ShortHash() produces collisions. String/[]byte compression output numberspace is limited to 1<<64-1 and 1<<128-2 respectivly and collision suspectibility of short strings (i.e. up to 100 bytes) shall be lower than those of long strings (i.e. kilobytes).  
+**Note:** ShortHash is NOT intended to hash files - it is foremost a internal function to init breeze's PRNG for XOR. The used folding function derives directly from Dmitry Chestnykhs go implementation of SipHash-2-4 ( https://github.com/dchest/siphash ) "a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein" ( https://131002.net/siphash/ ). The actual breeze code utilizes sipHash's fold/compressor to drains 2 &times; uint64 out of the []byte or string provided to seed the PRNG. It must be assumed that ShortHash() produces collisions.   
 
 **Note:** XOR() and ShortHash() do NOT reset the generator function automatically. Make sure this is the desired state by your programming logic or use the Reset() function before calling XOR/ShortHash.
 
 **5) Internal structure**
 
-   | Breeze128 | Breeze256 | Breeze512 |
+   | Breeze128 | Breeze256 | Breeze512 || BreezeCS128 | 
 ---|---|---|---|
-minimum seed |  [1]uint64 | [2]uint64 | [4]uint64 |
-maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* | 
-no. of logistic maps (LM) | 4 LM | 8 LM | 16 LM |
-no. of internal LM states | 6 | 12 | 24 | 
-output states | [16]uint64 | [32]uint32 | [64]uint32 | 
-used memory (struct) | ~186 Byte | ~362 Byte | ~715 Byte |
+minimum seed |  [1]uint64 | [2]uint64 | [4]uint64 | -- |
+maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* || autoseed/reseed using *128bit* crypto/rand |
+no. of logistic maps (LM) | 4 LM | 8 LM | 16 LM || 4LM |
+no. of internal LM states | 6 | 12 | 24 || 6 |
+output states | [16]uint64 | [32]uint32 | [64]uint32 || [16]uint64 |
+used memory (struct) | ~186 Byte | ~362 Byte | ~715 Byte || ~186 Byte |
 
 
 
@@ -550,7 +560,7 @@ But IEEE 754 double floating point values &gt;0 and &lt;1 can store more than on
 
 If i did not misunderstood the concept of entropy, this means Breeze is based on min. entropy of number-of-LM &times; 2<sup>28</sup> up to max. number-of-LM &times; 2<sup>50</sup> depending on roundTrips the internal state of *bitshift*.  
 
-Breeze128 / Breeze256 emit 16 / 32 uint64 (128 / 256 Bytes) deriving from each roundTrip results by permutative shifting and xoring the last outputs from the logistic map functions. 
+Breeze128 / Breeze256 / Breeze 512 emit 16 / 32 / 64 uint64 (128 / 256 / 512 Bytes) deriving from each roundTrip results by permutative shifting and xoring (expanding) the last outputs from the logistic map functions. 
 
 ---
 
@@ -558,7 +568,9 @@ Breeze128 / Breeze256 emit 16 / 32 uint64 (128 / 256 Bytes) deriving from each r
 
 **Important Note 2014/11/1**:
 
-Breeze had not (jet) become analysed for cryptographic security (cryptoanalysed) by the community! (I would very much appriciate, if you, the reader, would like to do some analysis) So far breeze should be considered UNSAFE and it's definitely NOT recommended to use Breeze in a security sensitive or cryptographic context.
+Breeze had not (jet) become analysed for cryptographic security (cryptoanalysed) by the community! (I would very much appriciate, if you, the reader, would like to do some analysis) 
+
+**So far breeze should be considered UNSAFE and it's definitely NOT recommended to use Breeze in a security sensitive or cryptographic context!**
 
 ####- - -
 
@@ -608,6 +620,8 @@ Best practice for stream cipher use is twofold:
 
 
 State-recovery from output means to guess all internal LM states from the output bytes. This should be a 'hard problem' because the output bytes derive from two or more mixed internal states mantissa fragments (steared by the internal variable *bitshift* [0..23] and always less than 52 bits to ensure information loss from internal states within the process) that are combined by an ARX algorithm and xored with their previous states. Furthermore with each rountTrip the output states are alternated in a circular way (state[0]<-state[1]; state[1]<-state[2] ... state[last]<-state[0]). 
+
+BreezeCS128 follows the same logic as Breeze128 but uses Go/golangs interface to urandom (crypto/rand) XORed with time.Now().Nanosecond() for seeding as a CSPRNG instead. Autoresseding within roundTrip() uses the same approach (see module csrand.go). 
 
 **3.) Guessing next output from previous**
 
