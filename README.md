@@ -56,7 +56,6 @@ The Breeze chaos-based pseudo random number generator CB-PRNG consists of four p
 2. Initialization (seedr)
 3. Generator core (roundTrip)
 4. Composition of output (Byte, ByteMP, XOR, Hash) 
-5. Internal structure
 
 The following documentation is intended to give an overview about the functionality of these parts - please inspect the code for more details. 
 
@@ -108,16 +107,16 @@ roundTrip() checks for pathological state == 0 and will in case automatically re
 
 **Note:** XOR() and ShortHash() do NOT reset the generator function automatically. Make sure this is the desired state by your programming logic or use the Reset() function before calling XOR/ShortHash.
 
-**5) Internal structure**
+####Breeze internals
 
-   | Breeze128 | Breeze256 | Breeze512 || BreezeCS128 | 
+   | Breeze128 | Breeze256 | Breeze512 | BreezeCS128 | 
 ---|---|---|---|
 minimum seed |  [1]uint64 | [2]uint64 | [4]uint64 | -- |
-maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* || autoseed/reseed using *128bit* crypto/rand |
-no. of logistic maps (LM) | 4 LM | 8 LM | 16 LM || 4LM |
-no. of internal LM states | 6 | 12 | 24 || 6 |
-output states | [16]uint64 | [32]uint32 | [64]uint32 || [16]uint64 |
-used memory (struct) | ~186 Byte | ~362 Byte | ~715 Byte || ~186 Byte |
+maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* | autoseed/reseed using *128bit* crypto/rand |
+no. of logistic maps (LM) | 4 LM | 8 LM | 16 LM | 4LM |
+no. of internal LM states | 6 | 12 | 24 | 6 |
+output states | [16]uint64 | [32]uint32 | [64]uint32 | [16]uint64 |
+used memory (struct) | ~186 Byte | ~362 Byte | ~715 Byte | ~186 Byte |
 
 
 
@@ -304,6 +303,7 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 	cmwcRand.init 17660 ns/op
 	salsa.init 20672 ns/op
 	breeze128.init 12805 ns/op
+	breeze128CS.init 323525 ns/op
 	breeze256.init 15523 ns/op
 	breeze512.init 8846 ns/op
 
@@ -314,6 +314,7 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 	crypto/rand 68.18179466 ns/op
 	math/rand 34.11473186 ns/op
 	breeze128 5.50920797 ns/op
+	breezeCS128 4.86843184 ns/op
 	breeze256 5.50827422 ns/op
 	breeze512 4.62195225 ns/op
 	cmwcRand 7.66446089 ns/op
@@ -330,6 +331,7 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 	crypto/rand 69.07768835 ns/op
 	math/rand 34.6467597 ns/op
 	breeze128 5.56105468 ns/op
+	breezeCS128 4.89398617 ns/op
 	breeze256 5.55432029 ns/op
 	breeze512 4.6326362 ns/op
 	cmwcRand 7.68528024 ns/op
@@ -346,6 +348,7 @@ This is the output from an Apple MBPro 2.4 GHz i7 8GB RAM running MacOSX 10.8.5;
 	crypto/rand 68.50893149 ns/op
 	math/rand 34.74860001 ns/op
 	breeze128 5.55343937 ns/op
+	breezeCS128 4.8759728 ns/op
 	breeze256 5.5923575 ns/op
 	breeze512 4.65723546 ns/op
 	cmwcRand 7.6424051 ns/op
