@@ -42,8 +42,10 @@
 // added Breeze512 (16 LMs) to provide length of keyspace: 512bit.
 // parenthesis in roundTrip() ()all functions corr; statenumbers corrected to fit the new scheme
 //
-// 2014/11/10:
-// added BreezeCS128 (4LMs) to provide fast CSPRNG from go/golangs crypto/rand (dev/urandom)
+// revision 2014/11/10:
+// any inner state has ist's own LM now: Breeze128: 6 LMs; Breeze 256: 12 LMs;  Breeze 512: 24 LMs;
+// added BreezeCS128 (6LMs) to provide fast CSPRNG from go/golangs crypto/rand (dev/urandom) -> csrand.go
+//
 // // Breeze had not been cryptoanalysed.
 // // It is definitly not recommended to use Breeze and it's ShortHash() or XOR() functions in particular in any security sensitive or
 // // cryptographic context.
@@ -62,7 +64,7 @@ import (
 var (
 	initSeedErr          = errors.New("Seed type not supported")
 	initSeedToShort      = errors.New("Seed string to short")
-	initSeedArrayToShort = errors.New("[]uint64 seed must have at least length of 2 (Breeze256) / 4 (Breeze512)")
+	initSeedArrayToShort = errors.New("[]uint64 seed must have at least length of 1 ")
 	mutex                = &sync.Mutex{}
 )
 
@@ -115,9 +117,7 @@ func initr(s interface{}) (seed [2]uint64, err error) {
 			s = s[2:]
 		}
 		seed[0] ^= s[0]
-		if len(s) == 2 {
-			seed[1] ^= s[1]
-		}
+		seed[1] ^= s[1]
 	case string:
 		seed = foldAndCompress([]byte(s))
 	case []byte:
@@ -214,6 +214,10 @@ func (l *Breeze128) roundTrip() {
 	newstate3 *= 3.99999998 * l.state3
 	newstate4 := (1.0 - l.state4)
 	newstate4 *= 3.99999997 * l.state4
+	newstate5 := (1.0 - l.state5)
+	newstate5 *= 3.999999 * l.state5
+	newstate6 := (1.0 - l.state6)
+	newstate6 *= 3.999997 * l.state6
 	// ...
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
@@ -229,11 +233,11 @@ func (l *Breeze128) roundTrip() {
 		l.seedr(seed)
 	default:
 		l.state1 = 1.0 - newstate2
-		l.state2 = l.state6
+		l.state2 = 1.0 - newstate3
 		l.state3 = 1.0 - newstate4
-		l.state4 = l.state5
-		l.state5 = 1.0 - newstate1
-		l.state6 = 1.0 - newstate3
+		l.state4 = 1.0 - newstate5
+		l.state5 = 1.0 - newstate6
+		l.state6 = 1.0 - newstate1
 	}
 
 	l.bitshift = (l.bitshift + 1) % 21
@@ -502,9 +506,6 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
 		}
 	case []uint64:
-		if len(s) < 2 {
-			return initSeedArrayToShort
-		}
 		copy(seed[0:], s[0:])
 	default:
 		return initSeedErr
@@ -567,6 +568,15 @@ func (l *Breeze256) roundTrip() {
 	newstate7 *= 3.99999997 * l.state7
 	newstate8 := (1.0 - l.state8)
 	newstate8 *= 3.99999996 * l.state8
+	newstate9 := (1.0 - l.state9)
+	newstate9 *= 3.99999 * l.state9
+	newstate10 := (1.0 - l.state10)
+	newstate10 *= 3.99998 * l.state10
+	newstate11 := (1.0 - l.state11)
+	newstate11 *= 3.99997 * l.state11
+	newstate12 := (1.0 - l.state12)
+	newstate12 *= 3.99996 * l.state12
+
 	// ...
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
@@ -586,17 +596,17 @@ func (l *Breeze256) roundTrip() {
 		l.seedr(seed)
 	default:
 		l.state1 = 1.0 - newstate2
-		l.state2 = l.state12
+		l.state2 = 1.0 - newstate3
 		l.state3 = 1.0 - newstate4
-		l.state4 = l.state11
+		l.state4 = 1.0 - newstate5
 		l.state5 = 1.0 - newstate6
-		l.state6 = l.state10
+		l.state6 = 1.0 - newstate7
 		l.state7 = 1.0 - newstate8
-		l.state8 = l.state9
-		l.state9 = 1.0 - newstate1
-		l.state10 = 1.0 - newstate7
-		l.state11 = 1.0 - newstate5
-		l.state12 = 1.0 - newstate3
+		l.state8 = 1.0 - newstate9
+		l.state9 = 1.0 - newstate10
+		l.state10 = 1.0 - newstate11
+		l.state11 = 1.0 - newstate12
+		l.state12 = 1.0 - newstate1
 	}
 
 	l.bitshift = (l.bitshift + 1) % 21
@@ -951,9 +961,6 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
 		}
 	case []uint64:
-		if len(s) < 4 {
-			return initSeedArrayToShort
-		}
 		copy(seed[0:], s[0:])
 	default:
 		return initSeedErr
@@ -1049,6 +1056,22 @@ func (l *Breeze512) roundTrip() {
 	newstate15 *= 3.958 * l.state15
 	newstate16 := (1.0 - l.state16)
 	newstate16 *= 3.967 * l.state16
+	newstate17 := (1.0 - l.state17)
+	newstate17 *= 3.608 * l.state17
+	newstate18 := (1.0 - l.state18)
+	newstate18 *= 3.609 * l.state18
+	newstate19 := (1.0 - l.state19)
+	newstate19 *= 3.618 * l.state19
+	newstate20 := (1.0 - l.state20)
+	newstate20 *= 3.617 * l.state20
+	newstate21 := (1.0 - l.state21)
+	newstate21 *= 3.67 * l.state21
+	newstate22 := (1.0 - l.state22)
+	newstate22 *= 3.616 * l.state22
+	newstate23 := (1.0 - l.state23)
+	newstate23 *= 3.639 * l.state23
+	newstate24 := (1.0 - l.state24)
+	newstate24 *= 3.648 * l.state24
 	// ...
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
@@ -1077,30 +1100,31 @@ func (l *Breeze512) roundTrip() {
 		l.seedr(seed)
 	default:
 		l.state1 = 1.0 - newstate2
-		l.state2 = l.state24
+		l.state2 = 1.0 - newstate3
 		l.state3 = 1.0 - newstate4
-		l.state4 = l.state23
+		l.state4 = 1.0 - newstate5
 		l.state5 = 1.0 - newstate6
-		l.state6 = l.state22
+		l.state6 = 1.0 - newstate7
 		l.state7 = 1.0 - newstate8
-		l.state8 = l.state21
+		l.state8 = 1.0 - newstate9
 		l.state9 = 1.0 - newstate10
-		l.state10 = l.state20
-		l.state11 = 1.0 - newstate12
-		l.state12 = l.state19
-		l.state13 = 1.0 - newstate14
-		l.state14 = l.state18
-		l.state15 = 1.0 - newstate16
-		l.state16 = l.state17
 
-		l.state17 = 1.0 - newstate1
-		l.state18 = 1.0 - newstate15
-		l.state19 = 1.0 - newstate13
-		l.state20 = 1.0 - newstate11
-		l.state21 = 1.0 - newstate9
-		l.state22 = 1.0 - newstate7
-		l.state23 = 1.0 - newstate5
-		l.state24 = 1.0 - newstate3
+		l.state10 = 1.0 - newstate11
+		l.state11 = 1.0 - newstate12
+		l.state12 = 1.0 - newstate13
+		l.state13 = 1.0 - newstate14
+		l.state14 = 1.0 - newstate15
+		l.state15 = 1.0 - newstate16
+		l.state16 = 1.0 - newstate17
+		l.state17 = 1.0 - newstate18
+		l.state18 = 1.0 - newstate19
+		l.state19 = 1.0 - newstate20
+
+		l.state20 = 1.0 - newstate21
+		l.state21 = 1.0 - newstate22
+		l.state22 = 1.0 - newstate23
+		l.state23 = 1.0 - newstate24
+		l.state24 = 1.0 - newstate1
 	}
 
 	l.bitshift = (l.bitshift + 1) % 21
@@ -1447,311 +1471,6 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 			hash[ii] ^= (pad[i*lenInBytes+ii] ^ (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + idx))))
 			switch idx {
 			case 511:
-				l.roundTrip()
-				idx = 0
-			default:
-				idx++
-			}
-		}
-	}
-
-	return hash, nil
-}
-
-//
-// Breeze CS128
-//
-// implements a cb-prng with four LM
-// seeds with urandom & time.Nanoseconds
-// 128 Byte outputstate
-type BreezeCS128 struct {
-	state          [16]uint64
-	state1, state2 float64
-	state3, state4 float64
-	state5, state6 float64
-	bitshift       uint8
-	idx            uint8
-	strt           unsafe.Pointer
-}
-
-// Reset resets to the initial (empty) state
-// before initializing.
-func (l *BreezeCS128) Reset() error {
-	*l = BreezeCS128{}
-	err := l.Init()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
-// Init reseeds the LMs but it does NOT reset the prng:
-//    it seeds based on the previous output states, internal bitshift and idx values
-func (l *BreezeCS128) Init() (err error) {
-	crand, err := csrand()
-	if err != nil {
-		return err
-	}
-	l.seedr(crand)
-	return err
-}
-
-// seedr calculates the startvalues of the LMs and
-// calls for the initial 'startrounds' roundtrips to shift circle
-// once or more times over the output states
-func (l *BreezeCS128) seedr(seed [2]uint64) {
-	s1, s2, s3 := splittr(seed[0])
-	s4, s5, s6 := splittr(seed[1])
-	startrounds := 17
-
-	l.state1 = 1.0 / float64(s1)
-	l.state2 = 1.0 - 1.0/float64(s2)
-	l.state3 = 1.0 / float64(s3)
-	l.state4 = 1.0 - 1.0/float64(s4)
-	l.state5 = 1.0 / float64(s5)
-	l.state6 = 1.0 - 1.0/float64(s6)
-
-	for startrounds > 0 {
-		l.roundTrip()
-		startrounds--
-	}
-	l.strt = unsafe.Pointer(&l.state[0])
-
-}
-
-// roundTrip calculates the next LMs states
-// tests the states to be != 0 (else reseeds from crypto/rand ^ time.Now().Nanosecond())
-// interchanges the states between LMs after 'mirroring them at 1'
-// processes the output states from two or more LMs states
-// mixin (xoring) in previous output states
-// rotates all output states
-func (l *BreezeCS128) roundTrip() {
-	newstate1 := (1.0 - l.state1)
-	newstate1 *= 4.0 * l.state1
-	newstate2 := (1.0 - l.state2)
-	newstate2 *= 3.999999999 * l.state2
-	newstate3 := (1.0 - l.state3)
-	newstate3 *= 3.99999998 * l.state3
-	newstate4 := (1.0 - l.state4)
-	newstate4 *= 3.99999997 * l.state4
-	// ...
-	// newstate_n := (1.0 - l.state_n)
-	// newstate_n *= 3.83 * l.state_n
-
-	switch newstate1 * newstate2 * newstate3 * newstate4 {
-	case 0:
-		crand, err := csrand()
-		if err != nil {
-			panic(1)
-		}
-		l.bitshift++
-		l.seedr(crand)
-	default:
-		l.state1 = 1.0 - newstate2
-		l.state2 = l.state6
-		l.state3 = 1.0 - newstate4
-		l.state4 = l.state5
-		l.state5 = 1.0 - newstate1
-		l.state6 = 1.0 - newstate3
-	}
-
-	l.bitshift = (l.bitshift + 1) % 21
-
-	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-
-	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-
-	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-
-	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-
-	// obfuscate states 0..3
-	tmp = l.state[0]
-	l.state[0] ^= l.state[2]
-	l.state[1] ^= l.state[3]
-	l.state[2] ^= tmp
-	l.state[3] ^= l.state[1]
-
-}
-
-// isSeeded checks if the prng had been seeded
-// and returns bool
-func (l *BreezeCS128) isSeeded() bool {
-	for _, v := range l.state {
-		if v > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// RandIntn returns an uint64 from the outputstate byte register
-// calling ByteMP to become thread/multiprocessing safe
-func (l *BreezeCS128) RandIntn() (ri uint64) {
-	if !l.isSeeded() {
-		return ri
-	}
-	var byt uint8
-	for i := 0; i < 8; i++ {
-		l.ByteMP(&byt)
-		ri = ri<<8 + uint64(byt)
-	}
-	return ri
-}
-
-// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputstate byte register)
-// calls RandIntn to be thread/multiprocessing safe
-// RandDbl returns are uniform distributed
-func (l *BreezeCS128) RandDbl() float64 {
-	if !l.isSeeded() {
-		return float64(0)
-	}
-	rd := float64(l.RandIntn()) / float64(1<<64)
-	switch rd {
-	case 1:
-		return float64(0)
-	default:
-		return rd
-	}
-}
-
-// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM states
-// and calls a roundTrip afterwards
-// RandNorm returns are normal (gaussian) distributed
-func (l *BreezeCS128) RandNorm() (rd float64) {
-	if !l.isSeeded() {
-		return rd
-	}
-	rd = (l.state1 + l.state2 + l.state3) / 3
-	l.roundTrip()
-	switch rd {
-	case 1:
-		return float64(0)
-	default:
-		return rd
-	}
-}
-
-// Byte() sets byt to the next Byte from the prng output byte register
-// refreshes by calling roundTrip if all registers on the stack had been called once
-func (l *BreezeCS128) Byte(byt *uint8) {
-	*byt = (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + uintptr(l.idx))))
-	switch l.idx {
-	case 127:
-		l.roundTrip()
-		l.idx = 0
-	default:
-		l.idx++
-	}
-}
-
-// ByteMP() is the mutex.Locked variant of Byte(): it sets byt to the next Byte from the prng output byte register
-// refreshes by calling roundTrip if all registers on the stack had been called once
-// ByteMP is thread/multiprocessing safe
-func (l *BreezeCS128) ByteMP(byt *uint8) {
-	mutex.Lock()
-	*byt = (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + uintptr(l.idx))))
-	switch l.idx {
-	case 127:
-		l.roundTrip()
-		l.idx = 0
-	default:
-		l.idx++
-	}
-	mutex.Unlock()
-}
-
-// XOR(out *[]byte, in *[]byte, key *[]byte)
-// XOR (re)seeds the prng with key (via SHortHash function) and
-// then XORes the bytes of *in with the *prng output register bytes to *out.
-// calls roudTrip to refresh the output byte register if it becomes exhausted
-// key must have at least 8 Byte length; keys longer than 1000 Bytes might slow down processing through long seeding calculation
-func (l *BreezeCS128) XOR(out *[]byte, in *[]byte, key *[]byte) error {
-	err := l.Init()
-	if err != nil {
-		return err
-	}
-	_, err = l.ShortHash(*key, 64)
-	if err != nil {
-		return err
-	}
-	idx := l.idx
-	for i, v := range *in {
-		(*out)[i] = v ^ (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + uintptr(idx))))
-		switch idx {
-		case 127:
-			l.roundTrip()
-			idx = 0
-		default:
-			idx++
-		}
-	}
-	return nil
-}
-
-// ShortHash returns a hash from input of lenInBytes length
-// input must have at least a length of 8; else returns an error
-// (re)seeds the prng with input folded and compressed by sipHash2-4 forld&compress function
-// input longer than 1000 Bytes might slow down processing through long seeding calculation
-func (l *BreezeCS128) ShortHash(s interface{}, lenInBytes int) (hash []byte, err error) {
-	err = l.Init()
-	if err != nil {
-		return hash, err
-	}
-	hash = make([]byte, lenInBytes)
-	var pad []byte
-	var padLen int
-	var seed [2]uint64
-
-	switch s := s.(type) {
-	case string:
-		if len(s) < 8 {
-			return hash, initSeedToShort
-		}
-		seed = foldAndCompress([]byte(s))
-		padLen = 1 + len(s)/lenInBytes
-		pad = make([]byte, padLen*lenInBytes)
-		copy(pad[len(s)%lenInBytes:], []byte(s))
-	case []byte:
-		if len(s) < 8 {
-			return hash, initSeedArrayToShort
-		}
-		seed = foldAndCompress(s)
-		padLen = 1 + len(s)/lenInBytes
-		pad = make([]byte, padLen*lenInBytes)
-		copy(pad[len(s)%lenInBytes:], s)
-	default:
-		return hash, initSeedErr
-	}
-
-	l.seedr(seed)
-
-	copy(hash, pad)
-	idx := uintptr(0)
-	for i := 0; i < padLen; i++ {
-		for ii := 0; ii < lenInBytes; ii++ {
-			hash[ii] ^= (pad[i*lenInBytes+ii] ^ (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + idx))))
-			switch idx {
-			case 127:
 				l.roundTrip()
 				idx = 0
 			default:
