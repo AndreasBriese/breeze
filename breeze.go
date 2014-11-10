@@ -53,8 +53,8 @@ import (
 
 var (
 	initSeedErr          = errors.New("Seed type not supported")
-	initSeedToShort      = errors.New("Seed to short")
-	initSeedArrayToShort = errors.New("[]uint64 seed must have at least length of 2")
+	initSeedToShort      = errors.New("Seed string to short")
+	initSeedArrayToShort = errors.New("[]uint64 seed must have at least length of 2 (Breeze256) / 4 (Breeze512)")
 	mutex                = &sync.Mutex{}
 )
 
@@ -258,10 +258,10 @@ func (l *Breeze128) roundTrip() {
 
 	// obfuscate states 0..3
 	tmp = l.state[0]
-	l.state[0] ^= l.state[1]
-	l.state[1] ^= l.state[2]
-	l.state[2] ^= l.state[3]
-	l.state[3] ^= tmp
+	l.state[0] ^= l.state[2]
+	l.state[1] ^= l.state[3]
+	l.state[2] ^= tmp
+	l.state[3] ^= l.state[1]
 
 }
 
@@ -397,7 +397,7 @@ func (l *Breeze128) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		copy(pad[len(s)%lenInBytes:], []byte(s))
 	case []byte:
 		if len(s) < 8 {
-			return hash, initSeedToShort
+			return hash, initSeedArrayToShort
 		}
 		seed = foldAndCompress(s)
 		padLen = 1 + len(s)/lenInBytes
@@ -459,7 +459,7 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 	switch s := s.(type) {
 	case string:
 		if len(s) < 8 {
-			return initSeedErr
+			return initSeedToShort
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress([]byte(s))
@@ -477,7 +477,7 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 		}
 	case []byte:
 		if len(s) < 8 {
-			return initSeedErr
+			return initSeedArrayToShort
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress(s)
@@ -495,7 +495,7 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 		}
 	case []uint64:
 		if len(s) < 2 {
-			return initSeedErr
+			return initSeedArrayToShort
 		}
 		copy(seed[0:], s[0:])
 	default:
@@ -646,19 +646,17 @@ func (l *Breeze256) roundTrip() {
 	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
 	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[1]
 
-	// obfuscate states 0..3
+	// obfuscate states 0..3 16..19
 	tmp = l.state[0]
-	l.state[0] ^= l.state[1]
-	l.state[1] ^= l.state[2]
-	l.state[2] ^= l.state[3]
-	l.state[3] ^= tmp
-
-	// obfuscate states 16..19
-	tmp = l.state[16]
-	l.state[16] ^= l.state[17]
-	l.state[17] ^= l.state[18]
-	l.state[18] ^= l.state[19]
+	l.state[0] ^= l.state[16]
+	l.state[16] ^= l.state[1]
+	l.state[1] ^= l.state[17]
+	l.state[17] ^= l.state[2]
+	l.state[2] ^= l.state[18]
+	l.state[18] ^= l.state[3]
+	l.state[3] ^= l.state[19]
 	l.state[19] ^= tmp
+
 }
 
 // isSeeded checks if the prng had been seeded
@@ -807,7 +805,7 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		copy(pad[len(s)%lenInBytes:], []byte(s))
 	case []byte:
 		if len(s) < 8 {
-			return hash, initSeedToShort
+			return hash, initSeedArrayToShort
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress(s)
@@ -886,7 +884,7 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 	switch s := s.(type) {
 	case string:
 		if len(s) < 16 {
-			return initSeedErr
+			return initSeedToShort
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress([]byte(s[0:16]))
@@ -916,7 +914,7 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 		}
 	case []byte:
 		if len(s) < 16 {
-			return initSeedErr
+			return initSeedArrayToShort
 		}
 		if len(s) > 16 && len(s) < 32 {
 			seed1 := foldAndCompress(s[0:16])
@@ -946,7 +944,7 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 		}
 	case []uint64:
 		if len(s) < 4 {
-			return initSeedErr
+			return initSeedArrayToShort
 		}
 		copy(seed[0:], s[0:])
 	default:
@@ -968,7 +966,7 @@ func (l *Breeze512) seedr(seed [8]uint64) {
 	s16, s17, s18 := splittr(seed[5])
 	s19, s20, s21 := splittr(seed[6])
 	s22, s23, s24 := splittr(seed[7])
-	startrounds := 72
+	startrounds := 67
 
 	l.state1 = 1.0 / float64(s1)
 	l.state2 = 1.0 - 1.0/float64(s2)
@@ -1152,18 +1150,15 @@ func (l *Breeze512) roundTrip() {
 	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
 	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[1]
 
-	// obfuscate states 0..3
+	// obfuscate states 0..3 16..19
 	tmp = l.state[0]
-	l.state[0] ^= l.state[1]
-	l.state[1] ^= l.state[2]
-	l.state[2] ^= l.state[3]
-	l.state[3] ^= tmp
-
-	// obfuscate states 16..19
-	tmp = l.state[16]
-	l.state[16] ^= l.state[17]
-	l.state[17] ^= l.state[18]
-	l.state[18] ^= l.state[19]
+	l.state[0] ^= l.state[16]
+	l.state[16] ^= l.state[1]
+	l.state[1] ^= l.state[17]
+	l.state[17] ^= l.state[2]
+	l.state[2] ^= l.state[18]
+	l.state[18] ^= l.state[3]
+	l.state[3] ^= l.state[19]
 	l.state[19] ^= tmp
 
 	l.bitshift = (l.bitshift + 1) % 21
@@ -1221,18 +1216,15 @@ func (l *Breeze512) roundTrip() {
 	l.state[62] = (l.state[63] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[32]
 	l.state[63] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[33]
 
-	// obfuscate states 0..3
+	// obfuscate states 32..35 48..51
 	tmp = l.state[32]
-	l.state[32] ^= l.state[33]
-	l.state[33] ^= l.state[34]
-	l.state[34] ^= l.state[35]
-	l.state[35] ^= tmp
-
-	// obfuscate states 16..19
-	tmp = l.state[48]
-	l.state[48] ^= l.state[49]
-	l.state[49] ^= l.state[50]
-	l.state[50] ^= l.state[51]
+	l.state[32] ^= l.state[48]
+	l.state[48] ^= l.state[33]
+	l.state[33] ^= l.state[49]
+	l.state[49] ^= l.state[34]
+	l.state[34] ^= l.state[50]
+	l.state[50] ^= l.state[35]
+	l.state[35] ^= l.state[51]
 	l.state[51] ^= tmp
 
 }
@@ -1362,7 +1354,7 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 	switch s := s.(type) {
 	case string:
 		if len(s) < 8 {
-			return hash, initSeedErr
+			return hash, initSeedToShort
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress([]byte(s))
@@ -1399,7 +1391,7 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		copy(pad[len(s)%lenInBytes:], []byte(s))
 	case []byte:
 		if len(s) < 8 {
-			return hash, initSeedErr
+			return hash, initSeedArrayToShort
 		}
 		if len(s) > 7 && len(s) < 17 {
 			seed1 := foldAndCompress(s)
