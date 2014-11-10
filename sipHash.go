@@ -17,6 +17,8 @@
 
 package breeze
 
+//breeze Version 1.1.1 as of 2014/11/10
+
 // Hash returns the 64-bit SipHash-2-4 of the given byte slice with two 64-bit
 // parts of 128-bit key: k0 and k1.
 

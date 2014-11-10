@@ -40,10 +40,18 @@
 // revision 2014/11/9:
 //
 // added Breeze512 (16 LMs) to provide length of keyspace: 512bit.
-// parenthesis in roundTrip() ()all functions corr; statenumbers corrected to fit the new scheme
+// parenthesis in roundTrip() ()all functions corr; Statenumbers corrected to fit the new scheme
+//
+// 2014/11/10:
+// added BreezeCS128 (4LMs) to provide fast CSPRNG from go/golangs crypto/rand (dev/urandom)
+// // Breeze had not been cryptoanalysed.
+// // It is definitly not recommended to use Breeze and it's ShortHash() or XOR() functions in particular in any security sensitive or
+// // cryptographic context.
 //
 
 package breeze
+
+//Version 1.1.1 as of 2014/11/10
 
 import (
 	"errors"
@@ -139,18 +147,18 @@ func splittr(seed uint64) (s1, s2, s3 uint64) {
 //
 // implements a cb-prng with four LM
 // seeds with two 64bit (uint64) -> four seeds 2**32 + startrounds
-// 128 Byte outputstate
+// 128 Byte outputState
 type Breeze128 struct {
-	state          [16]uint64
-	state1, state2 float64
-	state3, state4 float64
-	state5, state6 float64
+	State          [16]uint64
+	State1, State2 float64
+	State3, State4 float64
+	State5, State6 float64
 	bitshift       uint8
 	idx            uint8
 	strt           unsafe.Pointer
 }
 
-// Reset resets to the initial (empty) state
+// Reset resets to the initial (empty) State
 // before initializing.
 func (l *Breeze128) Reset() {
 	*l = Breeze128{}
@@ -158,7 +166,7 @@ func (l *Breeze128) Reset() {
 
 // Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
 // Init reseeds the LMs but it does NOT reset the prng:
-//    it seeds based on the previous output states, internal bitshift and idx values
+//    it seeds based on the previous output States, internal bitshift and idx values
 func (l *Breeze128) Init(s interface{}) (err error) {
 	seed, err := initr(s)
 	if err != nil {
@@ -170,105 +178,105 @@ func (l *Breeze128) Init(s interface{}) (err error) {
 
 // seedr calculates the startvalues of the LMs and
 // calls for the initial 'startrounds' roundtrips to shift circle
-// once or more times over the output states
+// once or more times over the output States
 func (l *Breeze128) seedr(seed [2]uint64) {
 	s1, s2, s3 := splittr(seed[0])
 	s4, s5, s6 := splittr(seed[1])
 	startrounds := 17
 
-	l.state1 = 1.0 / float64(s1)
-	l.state2 = 1.0 - 1.0/float64(s2)
-	l.state3 = 1.0 / float64(s3)
-	l.state4 = 1.0 - 1.0/float64(s4)
-	l.state5 = 1.0 / float64(s5)
-	l.state6 = 1.0 - 1.0/float64(s6)
+	l.State1 = 1.0 / float64(s1)
+	l.State2 = 1.0 - 1.0/float64(s2)
+	l.State3 = 1.0 / float64(s3)
+	l.State4 = 1.0 - 1.0/float64(s4)
+	l.State5 = 1.0 / float64(s5)
+	l.State6 = 1.0 - 1.0/float64(s6)
 
 	for startrounds > 0 {
 		l.roundTrip()
 		startrounds--
 	}
-	l.strt = unsafe.Pointer(&l.state[0])
+	l.strt = unsafe.Pointer(&l.State[0])
 
 }
 
-// roundTrip calculates the next LMs states
-// tests the states to be != 0 (else reseeds from previous states)
-// interchanges the states between LMs after 'mirroring them at 1'
-// processes the output states from two or more LMs states
-// mixin (xoring) in previous output states
-// rotates all output states
+// roundTrip calculates the next LMs States
+// tests the States to be != 0 (else reseeds from previous States)
+// interchanges the States between LMs after 'mirroring them at 1'
+// processes the output States from two or more LMs States
+// mixin (xoring) in previous output States
+// rotates all output States
 func (l *Breeze128) roundTrip() {
-	newstate1 := (1.0 - l.state1)
-	newstate1 *= 4.0 * l.state1
-	newstate2 := (1.0 - l.state2)
-	newstate2 *= 3.999999999 * l.state2
-	newstate3 := (1.0 - l.state3)
-	newstate3 *= 3.99999998 * l.state3
-	newstate4 := (1.0 - l.state4)
-	newstate4 *= 3.99999997 * l.state4
+	newState1 := (1.0 - l.State1)
+	newState1 *= 4.0 * l.State1
+	newState2 := (1.0 - l.State2)
+	newState2 *= 3.999999999 * l.State2
+	newState3 := (1.0 - l.State3)
+	newState3 *= 3.99999998 * l.State3
+	newState4 := (1.0 - l.State4)
+	newState4 *= 3.99999997 * l.State4
 	// ...
-	// newstate_n := (1.0 - l.state_n)
-	// newstate_n *= 3.83 * l.state_n
+	// newState_n := (1.0 - l.State_n)
+	// newState_n *= 3.83 * l.State_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 {
+	switch newState1 * newState2 * newState3 * newState4 {
 	case 0:
-		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift%7))
-		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state5))) << 11 >> (12 + l.bitshift%7))
-		s2 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift%7))
-		s2 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state6))) << 11 >> (12 + l.bitshift%7))
+		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift%7))
+		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State5))) << 11 >> (12 + l.bitshift%7))
+		s2 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift%7))
+		s2 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State6))) << 11 >> (12 + l.bitshift%7))
 		seed := [2]uint64{s1, s2}
 		l.bitshift++
 		l.seedr(seed)
 	default:
-		l.state1 = 1.0 - newstate2
-		l.state2 = l.state6
-		l.state3 = 1.0 - newstate4
-		l.state4 = l.state5
-		l.state5 = 1.0 - newstate1
-		l.state6 = 1.0 - newstate3
+		l.State1 = 1.0 - newState2
+		l.State2 = l.State6
+		l.State3 = 1.0 - newState4
+		l.State4 = l.State5
+		l.State5 = 1.0 - newState1
+		l.State6 = 1.0 - newState3
 	}
 
 	l.bitshift = (l.bitshift + 1) % 21
 
-	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
+	tmp := l.State[0]
+	l.State[0] = l.State[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))
+	l.State[1] = l.State[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))
+	l.State[2] = l.State[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))
+	l.State[3] = l.State[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))
 
 	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[0]
+	l.State[4] = (l.State[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[5] = (l.State[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[6] = (l.State[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[0]
 
 	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[3]
+	l.State[7] = (l.State[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[8] = (l.State[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[9] = (l.State[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[3]
 
 	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[2]
+	l.State[10] = (l.State[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[11] = (l.State[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[12] = (l.State[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[2]
 
 	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[1]
+	l.State[13] = (l.State[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[14] = (l.State[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[1]
 
-	// obfuscate states 0..3
-	tmp = l.state[0]
-	l.state[0] ^= l.state[2]
-	l.state[1] ^= l.state[3]
-	l.state[2] ^= tmp
-	l.state[3] ^= l.state[1]
+	// obfuscate States 0..3
+	tmp = l.State[0]
+	l.State[0] ^= l.State[2]
+	l.State[1] ^= l.State[3]
+	l.State[2] ^= tmp
+	l.State[3] ^= l.State[1]
 
 }
 
 // isSeeded checks if the prng had been seeded
 // and returns bool
 func (l *Breeze128) isSeeded() bool {
-	for _, v := range l.state {
+	for _, v := range l.State {
 		if v > 0 {
 			return true
 		}
@@ -276,7 +284,7 @@ func (l *Breeze128) isSeeded() bool {
 	return false
 }
 
-// RandIntn returns an uint64 from the outputstate byte register
+// RandIntn returns an uint64 from the outputState byte register
 // calling ByteMP to become thread/multiprocessing safe
 func (l *Breeze128) RandIntn() (ri uint64) {
 	if !l.isSeeded() {
@@ -290,7 +298,7 @@ func (l *Breeze128) RandIntn() (ri uint64) {
 	return ri
 }
 
-// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputstate byte register)
+// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputState byte register)
 // calls RandIntn to be thread/multiprocessing safe
 // RandDbl returns are uniform distributed
 func (l *Breeze128) RandDbl() float64 {
@@ -306,14 +314,14 @@ func (l *Breeze128) RandDbl() float64 {
 	}
 }
 
-// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM states
+// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM States
 // and calls a roundTrip afterwards
 // RandNorm returns are normal (gaussian) distributed
 func (l *Breeze128) RandNorm() (rd float64) {
 	if !l.isSeeded() {
 		return rd
 	}
-	rd = (l.state1 + l.state2 + l.state3) / 3
+	rd = (l.State1 + l.State2 + l.State3) / 3
 	l.roundTrip()
 	switch rd {
 	case 1:
@@ -432,19 +440,19 @@ func (l *Breeze128) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 //
 // implements a cb-prng with eight LM
 // seeds with four 64bit (uint64) -> eight seeds 2**32 + startrounds
-// 256 Byte outputstate
+// 256 Byte outputState
 type Breeze256 struct {
-	state                     [32]uint64
-	state1, state2, state3    float64
-	state4, state5, state6    float64
-	state7, state8, state9    float64
-	state10, state11, state12 float64
+	State                     [32]uint64
+	State1, State2, State3    float64
+	State4, State5, State6    float64
+	State7, State8, State9    float64
+	State10, State11, State12 float64
 	bitshift                  uint8
 	idx                       uint8
 	strt                      unsafe.Pointer
 }
 
-// Reset resets to the initial (empty) state
+// Reset resets to the initial (empty) State
 // before initializing.
 func (l *Breeze256) Reset() {
 	*l = Breeze256{}
@@ -452,7 +460,7 @@ func (l *Breeze256) Reset() {
 
 // Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
 // Init reseeds the LMs but it does NOT reset the prng:
-//    it seeds based on the previous output states, internal bitshift and idx values
+//    it seeds based on the previous output States, internal bitshift and idx values
 // Make sure, you Init with at minimum [2]uint64
 func (l *Breeze256) Init(s interface{}) (err error) {
 	var seed [4]uint64
@@ -507,7 +515,7 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 
 // seedr calculates the startvalues of the LMs and
 // calls for the initial 'startrounds' roundtrips to shift circle
-// once or more times over the output states
+// once or more times over the output States
 func (l *Breeze256) seedr(seed [4]uint64) {
 	s1, s2, s3 := splittr(seed[0])
 	s4, s5, s6 := splittr(seed[1])
@@ -515,154 +523,154 @@ func (l *Breeze256) seedr(seed [4]uint64) {
 	s10, s11, s12 := splittr(seed[3])
 	startrounds := 37
 
-	l.state1 = 1.0 / float64(s1)
-	l.state2 = 1.0 - 1.0/float64(s2)
-	l.state3 = 1.0 / float64(s3)
-	l.state4 = 1.0 - 1.0/float64(s4)
-	l.state5 = 1.0 / float64(s5)
-	l.state6 = 1.0 - 1.0/float64(s6)
-	l.state7 = 1.0 / float64(s7)
-	l.state8 = 1.0 - 1.0/float64(s8)
-	l.state9 = 1.0 / float64(s9)
-	l.state10 = 1.0 - 1.0/float64(s10)
-	l.state11 = 1.0 / float64(s11)
-	l.state12 = 1.0 - 1.0/float64(s12)
+	l.State1 = 1.0 / float64(s1)
+	l.State2 = 1.0 - 1.0/float64(s2)
+	l.State3 = 1.0 / float64(s3)
+	l.State4 = 1.0 - 1.0/float64(s4)
+	l.State5 = 1.0 / float64(s5)
+	l.State6 = 1.0 - 1.0/float64(s6)
+	l.State7 = 1.0 / float64(s7)
+	l.State8 = 1.0 - 1.0/float64(s8)
+	l.State9 = 1.0 / float64(s9)
+	l.State10 = 1.0 - 1.0/float64(s10)
+	l.State11 = 1.0 / float64(s11)
+	l.State12 = 1.0 - 1.0/float64(s12)
 
 	for startrounds > 0 {
 		l.roundTrip()
 		startrounds--
 	}
-	l.strt = unsafe.Pointer(&l.state[0])
+	l.strt = unsafe.Pointer(&l.State[0])
 
 }
 
-// roundTrip calculates the next LMs states
-// tests the states to be != 0 (else reseeds from previous states)
-// interchanges the states between LMs after 'mirroring them at 1'
-// processes the output states from two or more LMs states
-// mixin (xoring) in previous output states
-// rotates all output states
+// roundTrip calculates the next LMs States
+// tests the States to be != 0 (else reseeds from previous States)
+// interchanges the States between LMs after 'mirroring them at 1'
+// processes the output States from two or more LMs States
+// mixin (xoring) in previous output States
+// rotates all output States
 func (l *Breeze256) roundTrip() {
-	newstate1 := (1.0 - l.state1)
-	newstate1 *= 3.999999999 * l.state1
-	newstate2 := (1.0 - l.state2)
-	newstate2 *= 3.999999998 * l.state2
-	newstate3 := (1.0 - l.state3)
-	newstate3 *= 3.999999997 * l.state3
-	newstate4 := (1.0 - l.state4)
-	newstate4 *= 3.999999996 * l.state4
-	newstate5 := (1.0 - l.state5)
-	newstate5 *= 3.99999999 * l.state5
-	newstate6 := (1.0 - l.state6)
-	newstate6 *= 3.99999998 * l.state6
-	newstate7 := (1.0 - l.state7)
-	newstate7 *= 3.99999997 * l.state7
-	newstate8 := (1.0 - l.state8)
-	newstate8 *= 3.99999996 * l.state8
+	newState1 := (1.0 - l.State1)
+	newState1 *= 3.999999999 * l.State1
+	newState2 := (1.0 - l.State2)
+	newState2 *= 3.999999998 * l.State2
+	newState3 := (1.0 - l.State3)
+	newState3 *= 3.999999997 * l.State3
+	newState4 := (1.0 - l.State4)
+	newState4 *= 3.999999996 * l.State4
+	newState5 := (1.0 - l.State5)
+	newState5 *= 3.99999999 * l.State5
+	newState6 := (1.0 - l.State6)
+	newState6 *= 3.99999998 * l.State6
+	newState7 := (1.0 - l.State7)
+	newState7 *= 3.99999997 * l.State7
+	newState8 := (1.0 - l.State8)
+	newState8 *= 3.99999996 * l.State8
 	// ...
-	// newstate_n := (1.0 - l.state_n)
-	// newstate_n *= 3.83 * l.state_n
+	// newState_n := (1.0 - l.State_n)
+	// newState_n *= 3.83 * l.State_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 * newstate7 * newstate8 {
+	switch newState1 * newState2 * newState3 * newState4 * newState5 * newState6 * newState7 * newState8 {
 	case 0:
-		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift%7))
-		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state9))) << 11 >> (12 + l.bitshift%7))
-		s2 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift%7))
-		s2 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state10))) << 11 >> (12 + l.bitshift%7))
-		s3 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift%7))
-		s3 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state11))) << 11 >> (12 + l.bitshift%7))
-		s4 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift%7))
-		s4 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state12))) << 11 >> (12 + l.bitshift%7))
+		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift%7))
+		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State9))) << 11 >> (12 + l.bitshift%7))
+		s2 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift%7))
+		s2 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State10))) << 11 >> (12 + l.bitshift%7))
+		s3 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift%7))
+		s3 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State11))) << 11 >> (12 + l.bitshift%7))
+		s4 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift%7))
+		s4 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State12))) << 11 >> (12 + l.bitshift%7))
 		seed := [4]uint64{s1 ^ s4, s2 ^ s1, s3 ^ s2, s4 ^ s3}
 		l.bitshift++
 		l.seedr(seed)
 	default:
-		l.state1 = 1.0 - newstate2
-		l.state2 = l.state12
-		l.state3 = 1.0 - newstate4
-		l.state4 = l.state11
-		l.state5 = 1.0 - newstate6
-		l.state6 = l.state10
-		l.state7 = 1.0 - newstate8
-		l.state8 = l.state9
-		l.state9 = 1.0 - newstate1
-		l.state10 = 1.0 - newstate7
-		l.state11 = 1.0 - newstate5
-		l.state12 = 1.0 - newstate3
+		l.State1 = 1.0 - newState2
+		l.State2 = l.State12
+		l.State3 = 1.0 - newState4
+		l.State4 = l.State11
+		l.State5 = 1.0 - newState6
+		l.State6 = l.State10
+		l.State7 = 1.0 - newState8
+		l.State8 = l.State9
+		l.State9 = 1.0 - newState1
+		l.State10 = 1.0 - newState7
+		l.State11 = 1.0 - newState5
+		l.State12 = 1.0 - newState3
 	}
 
 	l.bitshift = (l.bitshift + 1) % 21
 
-	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
+	tmp := l.State[0]
+	l.State[0] = l.State[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))
+	l.State[1] = l.State[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))
+	l.State[2] = l.State[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))
+	l.State[3] = l.State[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))
 
-	l.state[16] = l.state[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))
-	l.state[17] = l.state[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))
-	l.state[18] = l.state[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))
-	l.state[19] = l.state[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[18]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[16]
+	l.State[16] = l.State[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))
+	l.State[17] = l.State[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))
+	l.State[18] = l.State[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))
+	l.State[19] = l.State[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))
 
 	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.State[4] = (l.State[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[18]
+	l.State[5] = (l.State[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[19]
+	l.State[6] = (l.State[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[16]
 
 	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.State[7] = (l.State[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[16]
+	l.State[8] = (l.State[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[17]
+	l.State[9] = (l.State[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[18]
 
 	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[15] = (l.state[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
+	l.State[10] = (l.State[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[16]
+	l.State[11] = (l.State[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[17]
+	l.State[12] = (l.State[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[18]
+
+	l.bitshift++
+	l.State[13] = (l.State[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[19]
+	l.State[14] = (l.State[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[16]
+	l.State[15] = (l.State[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[17]
 
 	l.bitshift = (l.bitshift + 1) % 21
 
 	l.bitshift++
-	l.state[20] = (l.state[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[21] = (l.state[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[22] = (l.state[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[0]
+	l.State[20] = (l.State[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[21] = (l.State[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[22] = (l.State[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))) ^ l.State[0]
 
 	l.bitshift++
-	l.state[23] = (l.state[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[24] = (l.state[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[25] = (l.state[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[3]
+	l.State[23] = (l.State[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[24] = (l.State[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[25] = (l.State[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))) ^ l.State[3]
 
 	l.bitshift++
-	l.state[26] = (l.state[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[27] = (l.state[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[28] = (l.state[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[2]
+	l.State[26] = (l.State[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[27] = (l.State[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[28] = (l.State[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))) ^ l.State[2]
 
 	l.bitshift++
-	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[1]
+	l.State[29] = (l.State[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[30] = (l.State[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))) ^ l.State[1]
 
-	// obfuscate states 0..3 16..19
-	tmp = l.state[0]
-	l.state[0] ^= l.state[16]
-	l.state[16] ^= l.state[1]
-	l.state[1] ^= l.state[17]
-	l.state[17] ^= l.state[2]
-	l.state[2] ^= l.state[18]
-	l.state[18] ^= l.state[3]
-	l.state[3] ^= l.state[19]
-	l.state[19] ^= tmp
+	// obfuscate States 0..3 16..19
+	tmp = l.State[0]
+	l.State[0] ^= l.State[16]
+	l.State[16] ^= l.State[1]
+	l.State[1] ^= l.State[17]
+	l.State[17] ^= l.State[2]
+	l.State[2] ^= l.State[18]
+	l.State[18] ^= l.State[3]
+	l.State[3] ^= l.State[19]
+	l.State[19] ^= tmp
 
 }
 
 // isSeeded checks if the prng had been seeded
 // and returns bool
 func (l *Breeze256) isSeeded() bool {
-	for _, v := range l.state {
+	for _, v := range l.State {
 		if v > 0 {
 			return true
 		}
@@ -670,7 +678,7 @@ func (l *Breeze256) isSeeded() bool {
 	return false
 }
 
-// RandIntn returns an uint64 from the outputstate byte register
+// RandIntn returns an uint64 from the outputState byte register
 // calling ByteMP to become thread/multiprocessing safe
 func (l *Breeze256) RandIntn() (ri uint64) {
 	if !l.isSeeded() {
@@ -684,7 +692,7 @@ func (l *Breeze256) RandIntn() (ri uint64) {
 	return ri
 }
 
-// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputstate byte register)
+// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputState byte register)
 // calls RandIntn to be thread/multiprocessing safe
 // RandDbl returns are uniform distributed
 func (l *Breeze256) RandDbl() float64 {
@@ -700,14 +708,14 @@ func (l *Breeze256) RandDbl() float64 {
 	}
 }
 
-// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM states
+// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM States
 // and calls a roundTrip afterwards
 // RandNorm returns are normal (gaussian) distributed
 func (l *Breeze256) RandNorm() (rd float64) {
 	if !l.isSeeded() {
 		return rd
 	}
-	rd = (l.state1 + l.state2 + l.state3) / 3
+	rd = (l.State1 + l.State2 + l.State3) / 3
 	l.roundTrip()
 	switch rd {
 	case 1:
@@ -853,23 +861,23 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 //
 // implements a cb-prng with 16 LM
 // seeds with eight 64bit (uint64) -> 24 seeds 22/23 bit
-// 512 Byte outputstate
+// 512 Byte outputState
 type Breeze512 struct {
-	state                     [64]uint64
-	state1, state2, state3    float64
-	state4, state5, state6    float64
-	state7, state8, state9    float64
-	state10, state11, state12 float64
-	state13, state14, state15 float64
-	state16, state17, state18 float64
-	state19, state20, state21 float64
-	state22, state23, state24 float64
+	State                     [64]uint64
+	State1, State2, State3    float64
+	State4, State5, State6    float64
+	State7, State8, State9    float64
+	State10, State11, State12 float64
+	State13, State14, State15 float64
+	State16, State17, State18 float64
+	State19, State20, State21 float64
+	State22, State23, State24 float64
 	bitshift                  uint8
 	idx                       uint16
 	strt                      unsafe.Pointer
 }
 
-// Reset resets to the initial (empty) state
+// Reset resets to the initial (empty) State
 // before initializing.
 func (l *Breeze512) Reset() {
 	*l = Breeze512{}
@@ -877,7 +885,7 @@ func (l *Breeze512) Reset() {
 
 // Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
 // Init reseeds the LMs but it does NOT reset the prng:
-//    it seeds based on the previous output states, internal bitshift and idx values
+//    it seeds based on the previous output States, internal bitshift and idx values
 // Make sure, you Init with at minimum [4]uint64
 func (l *Breeze512) Init(s interface{}) (err error) {
 	var seed [8]uint64
@@ -956,7 +964,7 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 
 // seedr calculates the startvalues of the LMs and
 // calls for the initial 'startrounds' roundtrips to shift circle
-// once or more times over the output states
+// once or more times over the output States
 func (l *Breeze512) seedr(seed [8]uint64) {
 	s1, s2, s3 := splittr(seed[0])
 	s4, s5, s6 := splittr(seed[1])
@@ -968,271 +976,271 @@ func (l *Breeze512) seedr(seed [8]uint64) {
 	s22, s23, s24 := splittr(seed[7])
 	startrounds := 67
 
-	l.state1 = 1.0 / float64(s1)
-	l.state2 = 1.0 - 1.0/float64(s2)
-	l.state3 = 1.0 / float64(s3)
-	l.state4 = 1.0 - 1.0/float64(s4)
-	l.state5 = 1.0 / float64(s5)
-	l.state6 = 1.0 - 1.0/float64(s6)
-	l.state7 = 1.0 / float64(s7)
-	l.state8 = 1.0 - 1.0/float64(s8)
-	l.state9 = 1.0 / float64(s9)
-	l.state10 = 1.0 - 1.0/float64(s10)
-	l.state11 = 1.0 / float64(s11)
-	l.state12 = 1.0 - 1.0/float64(s12)
+	l.State1 = 1.0 / float64(s1)
+	l.State2 = 1.0 - 1.0/float64(s2)
+	l.State3 = 1.0 / float64(s3)
+	l.State4 = 1.0 - 1.0/float64(s4)
+	l.State5 = 1.0 / float64(s5)
+	l.State6 = 1.0 - 1.0/float64(s6)
+	l.State7 = 1.0 / float64(s7)
+	l.State8 = 1.0 - 1.0/float64(s8)
+	l.State9 = 1.0 / float64(s9)
+	l.State10 = 1.0 - 1.0/float64(s10)
+	l.State11 = 1.0 / float64(s11)
+	l.State12 = 1.0 - 1.0/float64(s12)
 
-	l.state13 = 1.0 / float64(s13)
-	l.state14 = 1.0 - 1.0/float64(s14)
-	l.state15 = 1.0 / float64(s15)
-	l.state16 = 1.0 - 1.0/float64(s16)
-	l.state17 = 1.0 / float64(s17)
-	l.state18 = 1.0 - 1.0/float64(s18)
-	l.state19 = 1.0 / float64(s19)
-	l.state20 = 1.0 - 1.0/float64(s20)
-	l.state21 = 1.0 / float64(s21)
-	l.state22 = 1.0 - 1.0/float64(s22)
-	l.state23 = 1.0 / float64(s23)
-	l.state24 = 1.0 - 1.0/float64(s24)
+	l.State13 = 1.0 / float64(s13)
+	l.State14 = 1.0 - 1.0/float64(s14)
+	l.State15 = 1.0 / float64(s15)
+	l.State16 = 1.0 - 1.0/float64(s16)
+	l.State17 = 1.0 / float64(s17)
+	l.State18 = 1.0 - 1.0/float64(s18)
+	l.State19 = 1.0 / float64(s19)
+	l.State20 = 1.0 - 1.0/float64(s20)
+	l.State21 = 1.0 / float64(s21)
+	l.State22 = 1.0 - 1.0/float64(s22)
+	l.State23 = 1.0 / float64(s23)
+	l.State24 = 1.0 - 1.0/float64(s24)
 
 	for startrounds > 0 {
 		l.roundTrip()
 		startrounds--
 	}
-	l.strt = unsafe.Pointer(&l.state[0])
+	l.strt = unsafe.Pointer(&l.State[0])
 
 }
 
-// roundTrip calculates the next LMs states
-// tests the states to be != 0 (else reseeds from previous states)
-// interchanges the states between LMs after 'mirroring them at 1'
-// processes the output states from two or more LMs states
-// mixin (xoring) in previous output states
-// rotates all output states
+// roundTrip calculates the next LMs States
+// tests the States to be != 0 (else reseeds from previous States)
+// interchanges the States between LMs after 'mirroring them at 1'
+// processes the output States from two or more LMs States
+// mixin (xoring) in previous output States
+// rotates all output States
 func (l *Breeze512) roundTrip() {
-	newstate1 := (1.0 - l.state1)
-	newstate1 *= 3.901 * l.state1
-	newstate2 := (1.0 - l.state2)
-	newstate2 *= 3.902 * l.state2
-	newstate3 := (1.0 - l.state3)
-	newstate3 *= 3.903 * l.state3
-	newstate4 := (1.0 - l.state4)
-	newstate4 *= 3.904 * l.state4
-	newstate5 := (1.0 - l.state5)
-	newstate5 *= 3.905 * l.state5
-	newstate6 := (1.0 - l.state6)
-	newstate6 *= 3.906 * l.state6
-	newstate7 := (1.0 - l.state7)
-	newstate7 *= 3.907 * l.state7
-	newstate8 := (1.0 - l.state8)
-	newstate8 *= 3.908 * l.state8
-	newstate9 := (1.0 - l.state9)
-	newstate9 *= 3.909 * l.state9
-	newstate10 := (1.0 - l.state10)
-	newstate10 *= 3.918 * l.state10
-	newstate11 := (1.0 - l.state11)
-	newstate11 *= 3.917 * l.state11
-	newstate12 := (1.0 - l.state12)
-	newstate12 *= 3.916 * l.state12
-	newstate13 := (1.0 - l.state13)
-	newstate13 *= 3.939 * l.state13
-	newstate14 := (1.0 - l.state14)
-	newstate14 *= 3.948 * l.state14
-	newstate15 := (1.0 - l.state15)
-	newstate15 *= 3.958 * l.state15
-	newstate16 := (1.0 - l.state16)
-	newstate16 *= 3.967 * l.state16
+	newState1 := (1.0 - l.State1)
+	newState1 *= 3.901 * l.State1
+	newState2 := (1.0 - l.State2)
+	newState2 *= 3.902 * l.State2
+	newState3 := (1.0 - l.State3)
+	newState3 *= 3.903 * l.State3
+	newState4 := (1.0 - l.State4)
+	newState4 *= 3.904 * l.State4
+	newState5 := (1.0 - l.State5)
+	newState5 *= 3.905 * l.State5
+	newState6 := (1.0 - l.State6)
+	newState6 *= 3.906 * l.State6
+	newState7 := (1.0 - l.State7)
+	newState7 *= 3.907 * l.State7
+	newState8 := (1.0 - l.State8)
+	newState8 *= 3.908 * l.State8
+	newState9 := (1.0 - l.State9)
+	newState9 *= 3.909 * l.State9
+	newState10 := (1.0 - l.State10)
+	newState10 *= 3.918 * l.State10
+	newState11 := (1.0 - l.State11)
+	newState11 *= 3.917 * l.State11
+	newState12 := (1.0 - l.State12)
+	newState12 *= 3.916 * l.State12
+	newState13 := (1.0 - l.State13)
+	newState13 *= 3.939 * l.State13
+	newState14 := (1.0 - l.State14)
+	newState14 *= 3.948 * l.State14
+	newState15 := (1.0 - l.State15)
+	newState15 *= 3.958 * l.State15
+	newState16 := (1.0 - l.State16)
+	newState16 *= 3.967 * l.State16
 	// ...
-	// newstate_n := (1.0 - l.state_n)
-	// newstate_n *= 3.83 * l.state_n
+	// newState_n := (1.0 - l.State_n)
+	// newState_n *= 3.83 * l.State_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 * newstate7 * newstate8 * newstate9 * newstate10 * newstate11 * newstate12 * newstate13 * newstate14 * newstate15 * newstate16 {
+	switch newState1 * newState2 * newState3 * newState4 * newState5 * newState6 * newState7 * newState8 * newState9 * newState10 * newState11 * newState12 * newState13 * newState14 * newState15 * newState16 {
 	case 0:
-		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift%7))
-		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state9))) << 11 >> (12 + l.bitshift%7))
-		s2 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift%7))
-		s2 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state10))) << 11 >> (12 + l.bitshift%7))
-		s3 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift%7))
-		s3 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state11))) << 11 >> (12 + l.bitshift%7))
-		s4 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift%7))
-		s4 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state12))) << 11 >> (12 + l.bitshift%7))
+		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift%7))
+		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State9))) << 11 >> (12 + l.bitshift%7))
+		s2 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift%7))
+		s2 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State10))) << 11 >> (12 + l.bitshift%7))
+		s3 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift%7))
+		s3 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State11))) << 11 >> (12 + l.bitshift%7))
+		s4 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift%7))
+		s4 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State12))) << 11 >> (12 + l.bitshift%7))
 
-		s5 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift%7))
-		s5 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state21))) << 11 >> (12 + l.bitshift%7))
-		s6 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift%7))
-		s6 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state22))) << 11 >> (12 + l.bitshift%7))
-		s7 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state17)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state18)))<<11>>(12+l.bitshift%7))
-		s7 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state23))) << 11 >> (12 + l.bitshift%7))
-		s8 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state19)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state20)))<<11>>(12+l.bitshift%7))
-		s8 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state24))) << 11 >> (12 + l.bitshift%7))
+		s5 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<11>>(12+l.bitshift%7))
+		s5 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State21))) << 11 >> (12 + l.bitshift%7))
+		s6 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<11>>(12+l.bitshift%7))
+		s6 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State22))) << 11 >> (12 + l.bitshift%7))
+		s7 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State17)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State18)))<<11>>(12+l.bitshift%7))
+		s7 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State23))) << 11 >> (12 + l.bitshift%7))
+		s8 := (uint64)((*(*uint64)(unsafe.Pointer(&l.State19)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State20)))<<11>>(12+l.bitshift%7))
+		s8 += (uint64)((*(*uint64)(unsafe.Pointer(&l.State24))) << 11 >> (12 + l.bitshift%7))
 		seed := [8]uint64{s1 ^ s4, s2 ^ s1, s3 ^ s2, s4 ^ s3, s5 ^ s8, s6 ^ s5, s7 ^ s6, s8 ^ s7}
 		l.bitshift++
 		l.seedr(seed)
 	default:
-		l.state1 = 1.0 - newstate2
-		l.state2 = l.state24
-		l.state3 = 1.0 - newstate4
-		l.state4 = l.state23
-		l.state5 = 1.0 - newstate6
-		l.state6 = l.state22
-		l.state7 = 1.0 - newstate8
-		l.state8 = l.state21
-		l.state9 = 1.0 - newstate10
-		l.state10 = l.state20
-		l.state11 = 1.0 - newstate12
-		l.state12 = l.state19
-		l.state13 = 1.0 - newstate14
-		l.state14 = l.state18
-		l.state15 = 1.0 - newstate16
-		l.state16 = l.state17
+		l.State1 = 1.0 - newState2
+		l.State2 = l.State24
+		l.State3 = 1.0 - newState4
+		l.State4 = l.State23
+		l.State5 = 1.0 - newState6
+		l.State6 = l.State22
+		l.State7 = 1.0 - newState8
+		l.State8 = l.State21
+		l.State9 = 1.0 - newState10
+		l.State10 = l.State20
+		l.State11 = 1.0 - newState12
+		l.State12 = l.State19
+		l.State13 = 1.0 - newState14
+		l.State14 = l.State18
+		l.State15 = 1.0 - newState16
+		l.State16 = l.State17
 
-		l.state17 = 1.0 - newstate1
-		l.state18 = 1.0 - newstate15
-		l.state19 = 1.0 - newstate13
-		l.state20 = 1.0 - newstate11
-		l.state21 = 1.0 - newstate9
-		l.state22 = 1.0 - newstate7
-		l.state23 = 1.0 - newstate5
-		l.state24 = 1.0 - newstate3
+		l.State17 = 1.0 - newState1
+		l.State18 = 1.0 - newState15
+		l.State19 = 1.0 - newState13
+		l.State20 = 1.0 - newState11
+		l.State21 = 1.0 - newState9
+		l.State22 = 1.0 - newState7
+		l.State23 = 1.0 - newState5
+		l.State24 = 1.0 - newState3
 	}
 
 	l.bitshift = (l.bitshift + 1) % 21
 
-	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
+	tmp := l.State[0]
+	l.State[0] = l.State[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))
+	l.State[1] = l.State[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))
+	l.State[2] = l.State[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))
+	l.State[3] = l.State[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))
 
-	l.state[16] = l.state[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))
-	l.state[17] = l.state[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))
-	l.state[18] = l.state[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))
-	l.state[19] = l.state[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[18]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[16]
+	l.State[16] = l.State[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))
+	l.State[17] = l.State[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))
+	l.State[18] = l.State[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))
+	l.State[19] = l.State[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))
 
 	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.State[4] = (l.State[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[18]
+	l.State[5] = (l.State[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[19]
+	l.State[6] = (l.State[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[16]
 
 	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.State[7] = (l.State[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[16]
+	l.State[8] = (l.State[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[17]
+	l.State[9] = (l.State[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[18]
 
 	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[15] = (l.state[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
+	l.State[10] = (l.State[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[16]
+	l.State[11] = (l.State[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[17]
+	l.State[12] = (l.State[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[18]
+
+	l.bitshift++
+	l.State[13] = (l.State[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[19]
+	l.State[14] = (l.State[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[16]
+	l.State[15] = (l.State[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[17]
 
 	l.bitshift = (l.bitshift + 1) % 21
 
 	l.bitshift++
-	l.state[20] = (l.state[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[21] = (l.state[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[22] = (l.state[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[0]
+	l.State[20] = (l.State[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[21] = (l.State[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[22] = (l.State[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))) ^ l.State[0]
 
 	l.bitshift++
-	l.state[23] = (l.state[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[24] = (l.state[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[25] = (l.state[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[3]
+	l.State[23] = (l.State[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[24] = (l.State[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[25] = (l.State[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))) ^ l.State[3]
 
 	l.bitshift++
-	l.state[26] = (l.state[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[27] = (l.state[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[28] = (l.state[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[2]
+	l.State[26] = (l.State[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[27] = (l.State[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[28] = (l.State[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))) ^ l.State[2]
 
 	l.bitshift++
-	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[1]
+	l.State[29] = (l.State[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State5)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[30] = (l.State[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State6)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State7)))<<11>>(12+l.bitshift)))) ^ l.State[1]
 
-	// obfuscate states 0..3 16..19
-	tmp = l.state[0]
-	l.state[0] ^= l.state[16]
-	l.state[16] ^= l.state[1]
-	l.state[1] ^= l.state[17]
-	l.state[17] ^= l.state[2]
-	l.state[2] ^= l.state[18]
-	l.state[18] ^= l.state[3]
-	l.state[3] ^= l.state[19]
-	l.state[19] ^= tmp
+	// obfuscate States 0..3 16..19
+	tmp = l.State[0]
+	l.State[0] ^= l.State[16]
+	l.State[16] ^= l.State[1]
+	l.State[1] ^= l.State[17]
+	l.State[17] ^= l.State[2]
+	l.State[2] ^= l.State[18]
+	l.State[18] ^= l.State[3]
+	l.State[3] ^= l.State[19]
+	l.State[19] ^= tmp
 
 	l.bitshift = (l.bitshift + 1) % 21
 
-	tmp = l.state[32]
-	l.state[32] = l.state[33] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))
-	l.state[33] = l.state[34] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))
-	l.state[34] = l.state[35] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift)))
-	l.state[35] = l.state[36] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))
+	tmp = l.State[32]
+	l.State[32] = l.State[33] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<11>>(12+l.bitshift)))
+	l.State[33] = l.State[34] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<11>>(12+l.bitshift)))
+	l.State[34] = l.State[35] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<11>>(12+l.bitshift)))
+	l.State[35] = l.State[36] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<11>>(12+l.bitshift)))
 
-	l.state[48] = l.state[49] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))
-	l.state[49] = l.state[50] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))
-	l.state[50] = l.state[51] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))
-	l.state[51] = l.state[52] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[36] = (l.state[37] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))) ^ l.state[50]
-	l.state[37] = (l.state[38] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))) ^ l.state[51]
-	l.state[38] = (l.state[39] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift)))) ^ l.state[48]
+	l.State[48] = l.State[49] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<11>>(12+l.bitshift)))
+	l.State[49] = l.State[50] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<11>>(12+l.bitshift)))
+	l.State[50] = l.State[51] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<11>>(12+l.bitshift)))
+	l.State[51] = l.State[52] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<11>>(12+l.bitshift)))
 
 	l.bitshift++
-	l.state[39] = (l.state[40] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))) ^ l.state[49]
-	l.state[40] = (l.state[41] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))) ^ l.state[50]
-	l.state[41] = (l.state[42] ^ (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift))) ^ l.state[51]
+	l.State[36] = (l.State[37] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<11>>(12+l.bitshift)))) ^ l.State[50]
+	l.State[37] = (l.State[38] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<11>>(12+l.bitshift)))) ^ l.State[51]
+	l.State[38] = (l.State[39] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<11>>(12+l.bitshift)))) ^ l.State[48]
 
 	l.bitshift++
-	l.state[42] = (l.state[43] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))) ^ l.state[48]
-	l.state[43] = (l.state[44] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift)))) ^ l.state[49]
-	l.state[44] = (l.state[45] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))) ^ l.state[50]
+	l.State[39] = (l.State[40] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<11>>(12+l.bitshift)))) ^ l.State[49]
+	l.State[40] = (l.State[41] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<11>>(12+l.bitshift)))) ^ l.State[50]
+	l.State[41] = (l.State[42] ^ (uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<11>>(12+l.bitshift))) ^ l.State[51]
 
 	l.bitshift++
-	l.state[45] = (l.state[46] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))) ^ l.state[51]
-	l.state[46] = (l.state[47] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))) ^ l.state[48]
-	l.state[47] = (l.state[48] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))) ^ l.state[49]
+	l.State[42] = (l.State[43] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<11>>(12+l.bitshift)))) ^ l.State[48]
+	l.State[43] = (l.State[44] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<11>>(12+l.bitshift)))) ^ l.State[49]
+	l.State[44] = (l.State[45] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<11>>(12+l.bitshift)))) ^ l.State[50]
+
+	l.bitshift++
+	l.State[45] = (l.State[46] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State9)))<<11>>(12+l.bitshift)))) ^ l.State[51]
+	l.State[46] = (l.State[47] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State10)))<<11>>(12+l.bitshift)))) ^ l.State[48]
+	l.State[47] = (l.State[48] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State11)))<<11>>(12+l.bitshift)))) ^ l.State[49]
 
 	l.bitshift = (l.bitshift + 1) % 21
 
 	l.bitshift++
-	l.state[52] = (l.state[53] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[34]
-	l.state[53] = (l.state[54] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[35]
-	l.state[54] = (l.state[55] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))) ^ l.state[32]
+	l.State[52] = (l.State[53] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<11>>(12+l.bitshift)))) ^ l.State[34]
+	l.State[53] = (l.State[54] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<11>>(12+l.bitshift)))) ^ l.State[35]
+	l.State[54] = (l.State[55] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<11>>(12+l.bitshift)))) ^ l.State[32]
 
 	l.bitshift++
-	l.state[55] = (l.state[56] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))) ^ l.state[33]
-	l.state[56] = (l.state[57] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[34]
-	l.state[57] = (l.state[58] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))) ^ l.state[35]
+	l.State[55] = (l.State[56] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<11>>(12+l.bitshift)))) ^ l.State[33]
+	l.State[56] = (l.State[57] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<11>>(12+l.bitshift)))) ^ l.State[34]
+	l.State[57] = (l.State[58] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<11>>(12+l.bitshift)))) ^ l.State[35]
 
 	l.bitshift++
-	l.state[58] = (l.state[59] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[32]
-	l.state[59] = (l.state[60] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))) ^ l.state[33]
-	l.state[60] = (l.state[61] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))) ^ l.state[34]
+	l.State[58] = (l.State[59] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<11>>(12+l.bitshift)))) ^ l.State[32]
+	l.State[59] = (l.State[60] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<11>>(12+l.bitshift)))) ^ l.State[33]
+	l.State[60] = (l.State[61] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<11>>(12+l.bitshift)))) ^ l.State[34]
 
 	l.bitshift++
-	l.state[61] = (l.state[62] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))) ^ l.state[35]
-	l.state[62] = (l.state[63] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[32]
-	l.state[63] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[33]
+	l.State[61] = (l.State[62] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State13)))<<11>>(12+l.bitshift)))) ^ l.State[35]
+	l.State[62] = (l.State[63] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State14)))<<11>>(12+l.bitshift)))) ^ l.State[32]
+	l.State[63] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State15)))<<11>>(12+l.bitshift)))) ^ l.State[33]
 
-	// obfuscate states 32..35 48..51
-	tmp = l.state[32]
-	l.state[32] ^= l.state[48]
-	l.state[48] ^= l.state[33]
-	l.state[33] ^= l.state[49]
-	l.state[49] ^= l.state[34]
-	l.state[34] ^= l.state[50]
-	l.state[50] ^= l.state[35]
-	l.state[35] ^= l.state[51]
-	l.state[51] ^= tmp
+	// obfuscate States 32..35 48..51
+	tmp = l.State[32]
+	l.State[32] ^= l.State[48]
+	l.State[48] ^= l.State[33]
+	l.State[33] ^= l.State[49]
+	l.State[49] ^= l.State[34]
+	l.State[34] ^= l.State[50]
+	l.State[50] ^= l.State[35]
+	l.State[35] ^= l.State[51]
+	l.State[51] ^= tmp
 
 }
 
 // isSeeded checks if the prng had been seeded
 // and returns bool
 func (l *Breeze512) isSeeded() bool {
-	for _, v := range l.state {
+	for _, v := range l.State {
 		if v > 0 {
 			return true
 		}
@@ -1240,7 +1248,7 @@ func (l *Breeze512) isSeeded() bool {
 	return false
 }
 
-// RandIntn returns an uint64 from the outputstate byte register
+// RandIntn returns an uint64 from the outputState byte register
 // calling ByteMP to become thread/multiprocessing safe
 func (l *Breeze512) RandIntn() (ri uint64) {
 	if !l.isSeeded() {
@@ -1254,7 +1262,7 @@ func (l *Breeze512) RandIntn() (ri uint64) {
 	return ri
 }
 
-// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputstate byte register)
+// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputState byte register)
 // calls RandIntn to be thread/multiprocessing safe
 // RandDbl returns are uniform distributed
 func (l *Breeze512) RandDbl() float64 {
@@ -1270,14 +1278,14 @@ func (l *Breeze512) RandDbl() float64 {
 	}
 }
 
-// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM states
+// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM States
 // and calls a roundTrip afterwards
 // RandNorm returns are normal (gaussian) distributed
 func (l *Breeze512) RandNorm() (rd float64) {
 	if !l.isSeeded() {
 		return rd
 	}
-	rd = (l.state1 + l.state2 + l.state3) / 3
+	rd = (l.State1 + l.State2 + l.State3) / 3
 	l.roundTrip()
 	switch rd {
 	case 1:
@@ -1439,6 +1447,311 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 			hash[ii] ^= (pad[i*lenInBytes+ii] ^ (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + idx))))
 			switch idx {
 			case 511:
+				l.roundTrip()
+				idx = 0
+			default:
+				idx++
+			}
+		}
+	}
+
+	return hash, nil
+}
+
+//
+// Breeze CS128
+//
+// implements a cb-prng with four LM
+// seeds with urandom & time.Nanoseconds
+// 128 Byte outputState
+type BreezeCS128 struct {
+	State          [16]uint64
+	State1, State2 float64
+	State3, State4 float64
+	State5, State6 float64
+	bitshift       uint8
+	idx            uint8
+	strt           unsafe.Pointer
+}
+
+// Reset resets to the initial (empty) State
+// before initializing.
+func (l *BreezeCS128) Reset() error {
+	*l = BreezeCS128{}
+	err := l.Init()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Init initializes from user input by calling initr() to process the input to become seeds (seedr(seed)) for the LMs.
+// Init reseeds the LMs but it does NOT reset the prng:
+//    it seeds based on the previous output States, internal bitshift and idx values
+func (l *BreezeCS128) Init() (err error) {
+	crand, err := csrand()
+	if err != nil {
+		return err
+	}
+	l.seedr(crand)
+	return err
+}
+
+// seedr calculates the startvalues of the LMs and
+// calls for the initial 'startrounds' roundtrips to shift circle
+// once or more times over the output States
+func (l *BreezeCS128) seedr(seed [2]uint64) {
+	s1, s2, s3 := splittr(seed[0])
+	s4, s5, s6 := splittr(seed[1])
+	startrounds := 17
+
+	l.State1 = 1.0 / float64(s1)
+	l.State2 = 1.0 - 1.0/float64(s2)
+	l.State3 = 1.0 / float64(s3)
+	l.State4 = 1.0 - 1.0/float64(s4)
+	l.State5 = 1.0 / float64(s5)
+	l.State6 = 1.0 - 1.0/float64(s6)
+
+	for startrounds > 0 {
+		l.roundTrip()
+		startrounds--
+	}
+	l.strt = unsafe.Pointer(&l.State[0])
+
+}
+
+// roundTrip calculates the next LMs States
+// tests the States to be != 0 (else reseeds from crypto/rand ^ time.Now().Nanosecond())
+// interchanges the States between LMs after 'mirroring them at 1'
+// processes the output States from two or more LMs States
+// mixin (xoring) in previous output States
+// rotates all output States
+func (l *BreezeCS128) roundTrip() {
+	newState1 := (1.0 - l.State1)
+	newState1 *= 4.0 * l.State1
+	newState2 := (1.0 - l.State2)
+	newState2 *= 3.999999999 * l.State2
+	newState3 := (1.0 - l.State3)
+	newState3 *= 3.99999998 * l.State3
+	newState4 := (1.0 - l.State4)
+	newState4 *= 3.99999997 * l.State4
+	// ...
+	// newState_n := (1.0 - l.State_n)
+	// newState_n *= 3.83 * l.State_n
+
+	switch newState1 * newState2 * newState3 * newState4 {
+	case 0:
+		crand, err := csrand()
+		if err != nil {
+			panic(1)
+		}
+		l.bitshift++
+		l.seedr(crand)
+	default:
+		l.State1 = 1.0 - newState2
+		l.State2 = l.State6
+		l.State3 = 1.0 - newState4
+		l.State4 = l.State5
+		l.State5 = 1.0 - newState1
+		l.State6 = 1.0 - newState3
+	}
+
+	l.bitshift = (l.bitshift + 1) % 21
+
+	tmp := l.State[0]
+	l.State[0] = l.State[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))
+	l.State[1] = l.State[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))
+	l.State[2] = l.State[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))
+	l.State[3] = l.State[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))
+
+	l.bitshift++
+	l.State[4] = (l.State[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[5] = (l.State[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[6] = (l.State[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+
+	l.bitshift++
+	l.State[7] = (l.State[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[8] = (l.State[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+	l.State[9] = (l.State[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+
+	l.bitshift++
+	l.State[10] = (l.State[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[11] = (l.State[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+	l.State[12] = (l.State[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[2]
+
+	l.bitshift++
+	l.State[13] = (l.State[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State1)))<<11>>(12+l.bitshift)))) ^ l.State[3]
+	l.State[14] = (l.State[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State2)))<<11>>(12+l.bitshift)))) ^ l.State[0]
+	l.State[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.State4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.State3)))<<11>>(12+l.bitshift)))) ^ l.State[1]
+
+	// obfuscate States 0..3
+	tmp = l.State[0]
+	l.State[0] ^= l.State[2]
+	l.State[1] ^= l.State[3]
+	l.State[2] ^= tmp
+	l.State[3] ^= l.State[1]
+
+}
+
+// isSeeded checks if the prng had been seeded
+// and returns bool
+func (l *BreezeCS128) isSeeded() bool {
+	for _, v := range l.State {
+		if v > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// RandIntn returns an uint64 from the outputState byte register
+// calling ByteMP to become thread/multiprocessing safe
+func (l *BreezeCS128) RandIntn() (ri uint64) {
+	if !l.isSeeded() {
+		return ri
+	}
+	var byt uint8
+	for i := 0; i < 8; i++ {
+		l.ByteMP(&byt)
+		ri = ri<<8 + uint64(byt)
+	}
+	return ri
+}
+
+// RandDbl returns a positive float64 [0,1) (from an uint64 deriving from outputState byte register)
+// calls RandIntn to be thread/multiprocessing safe
+// RandDbl returns are uniform distributed
+func (l *BreezeCS128) RandDbl() float64 {
+	if !l.isSeeded() {
+		return float64(0)
+	}
+	rd := float64(l.RandIntn()) / float64(1<<64)
+	switch rd {
+	case 1:
+		return float64(0)
+	default:
+		return rd
+	}
+}
+
+// RandNorm returns a positive float64 [0,1) calculating the mean of 3 internal LM States
+// and calls a roundTrip afterwards
+// RandNorm returns are normal (gaussian) distributed
+func (l *BreezeCS128) RandNorm() (rd float64) {
+	if !l.isSeeded() {
+		return rd
+	}
+	rd = (l.State1 + l.State2 + l.State3) / 3
+	l.roundTrip()
+	switch rd {
+	case 1:
+		return float64(0)
+	default:
+		return rd
+	}
+}
+
+// Byte() sets byt to the next Byte from the prng output byte register
+// refreshes by calling roundTrip if all registers on the stack had been called once
+func (l *BreezeCS128) Byte(byt *uint8) {
+	*byt = (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + uintptr(l.idx))))
+	switch l.idx {
+	case 127:
+		l.roundTrip()
+		l.idx = 0
+	default:
+		l.idx++
+	}
+}
+
+// ByteMP() is the mutex.Locked variant of Byte(): it sets byt to the next Byte from the prng output byte register
+// refreshes by calling roundTrip if all registers on the stack had been called once
+// ByteMP is thread/multiprocessing safe
+func (l *BreezeCS128) ByteMP(byt *uint8) {
+	mutex.Lock()
+	*byt = (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + uintptr(l.idx))))
+	switch l.idx {
+	case 127:
+		l.roundTrip()
+		l.idx = 0
+	default:
+		l.idx++
+	}
+	mutex.Unlock()
+}
+
+// XOR(out *[]byte, in *[]byte, key *[]byte)
+// XOR (re)seeds the prng with key (via SHortHash function) and
+// then XORes the bytes of *in with the *prng output register bytes to *out.
+// calls roudTrip to refresh the output byte register if it becomes exhausted
+// key must have at least 8 Byte length; keys longer than 1000 Bytes might slow down processing through long seeding calculation
+func (l *BreezeCS128) XOR(out *[]byte, in *[]byte, key *[]byte) error {
+	err := l.Init()
+	if err != nil {
+		return err
+	}
+	_, err = l.ShortHash(*key, 64)
+	if err != nil {
+		return err
+	}
+	idx := l.idx
+	for i, v := range *in {
+		(*out)[i] = v ^ (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + uintptr(idx))))
+		switch idx {
+		case 127:
+			l.roundTrip()
+			idx = 0
+		default:
+			idx++
+		}
+	}
+	return nil
+}
+
+// ShortHash returns a hash from input of lenInBytes length
+// input must have at least a length of 8; else returns an error
+// (re)seeds the prng with input folded and compressed by sipHash2-4 forld&compress function
+// input longer than 1000 Bytes might slow down processing through long seeding calculation
+func (l *BreezeCS128) ShortHash(s interface{}, lenInBytes int) (hash []byte, err error) {
+	err = l.Init()
+	if err != nil {
+		return hash, err
+	}
+	hash = make([]byte, lenInBytes)
+	var pad []byte
+	var padLen int
+	var seed [2]uint64
+
+	switch s := s.(type) {
+	case string:
+		if len(s) < 8 {
+			return hash, initSeedToShort
+		}
+		seed = foldAndCompress([]byte(s))
+		padLen = 1 + len(s)/lenInBytes
+		pad = make([]byte, padLen*lenInBytes)
+		copy(pad[len(s)%lenInBytes:], []byte(s))
+	case []byte:
+		if len(s) < 8 {
+			return hash, initSeedArrayToShort
+		}
+		seed = foldAndCompress(s)
+		padLen = 1 + len(s)/lenInBytes
+		pad = make([]byte, padLen*lenInBytes)
+		copy(pad[len(s)%lenInBytes:], s)
+	default:
+		return hash, initSeedErr
+	}
+
+	l.seedr(seed)
+
+	copy(hash, pad)
+	idx := uintptr(0)
+	for i := 0; i < padLen; i++ {
+		for ii := 0; ii < lenInBytes; ii++ {
+			hash[ii] ^= (pad[i*lenInBytes+ii] ^ (uint8)(*(*uint8)(unsafe.Pointer(uintptr(l.strt) + idx))))
+			switch idx {
+			case 127:
 				l.roundTrip()
 				idx = 0
 			default:
