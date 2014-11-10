@@ -109,10 +109,10 @@ roundTrip() checks for pathological state == 0 and will in case automatically re
 
 ####Breeze internals
 
-   | Breeze128 | Breeze256 | Breeze512 | BreezeCS128 | 
----|---|---|---|
+   | Breeze128 | Breeze256 | Breeze512 | BreezeCS128 |
+---|---|---|---|---|
 minimum seed |  [1]uint64 | [2]uint64 | [4]uint64 | -- |
-maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* | autoseed/reseed using *128bit* crypto/rand |
+maximum seed/keyspace |  [2]uint64 *128bit* | [4]uint64 *256bit* | [8]uint64 *512bit* | auto-/reseed crypto/rand |
 no. of logistic maps (LM) | 4 LM | 8 LM | 16 LM | 4LM |
 no. of internal LM states | 6 | 12 | 24 | 6 |
 output states | [16]uint64 | [32]uint32 | [64]uint32 | [16]uint64 |
