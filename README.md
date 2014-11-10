@@ -139,7 +139,7 @@ Import the module within the import header of your code:
 
 	package main
 
-	import "./breeze"
+	import "github.com/AndreasBriese/breeze"
 	import "bytes"     // byte comparison in the XOR exmaple
 	import "fmt"       // printout
 	import "io/ioutil" // readfile in the XOR example
