@@ -636,19 +636,19 @@ Even if an attacker knows
  - the actual assignment of internal states to LMs (S3),  
  - internal bitshift-value (&sim; 1/3 number of roundTrips mod 23; -&gt; output composition).  
 
-The first 'hard problem' will be to guess the number of roundTrips at initialization (1..2<sup>38</sup> startrounds determined by the input processing overhead; -&gt; seed preparation).
-
 Then the attacker will reach the point, that he cannot reverse calculate the preceeding state because of (S2) and the above 'IEEE 754 dilemma':
 
     'IEEE 754 dilemma' for float numbers d with 0 < d < 1: mostly x != 1 - (1 - x) 
 	but if and only if x can be represented exactly by 1/2 + 1/2^2+ .. + 1/2^len(mantissa) 
 	then x == 1 - (1 - x)
 
-(S2) results in a hard to recover information loss each time of roundTrip. In this distinct the breeze algorithm is likely to be an "one-way function".  
+(S2) results in a "hard to recover" information loss each time of roundTrip. In this distinct the breeze algorithm is likely to be an "one-way function".  
 
 **5.) Calculate the next output with insights into all internal states**
 
 If an attacker got all the above mentioned internal information he will be able to compute all future output.
+
+This is not the case for BreezeCS128 that ocassionally autoreseeds from urandom (crypto/rand). Here an attacker would be able to calculate outputs until next autoreseeding is started because of a internal state was rounded to Zero (from observation once about 10^10 roundTrips).   
  
 ---
 
