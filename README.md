@@ -18,7 +18,7 @@
   - added Breeze512 (16 LMs) to provide length of keyspace: 512bit.
   - parenthesis in roundTrip() ()all functions corr; statenumbers corrected to fit the new scheme
 
-**Note:** Breeze512 is not NIST tested so far, will do in the next days and will provide testresults below.(Its the same new scheme of AIX - should pass) update: Breeze512 passed 2 of three NIST checks (failed once with 94/100 on NonOverlappingTemplate) 
+~~**Note:** Breeze512 is not NIST tested so far, will do in the next days and will provide testresults below.(Its the same new scheme of AIX - should pass) update: Breeze512 passed 2 of three NIST checks (failed once with 94/100 on NonOverlappingTemplate)~~ update: corrected for 1 bit shorter part of the Mantissa solved this NIST failures. (passed 12 NIST-Tests so far)  
 
 **2014/11/09 20:00 Last revision ensured proper seeding input size for Breeze256/51. Make sure you have the current version running** 
 
