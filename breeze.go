@@ -119,9 +119,21 @@ func initr(s interface{}) (seed [2]uint64, err error) {
 		seed[0] ^= s[0]
 		seed[1] ^= s[1]
 	case string:
-		seed = foldAndCompress([]byte(s))
+		if len(s) < 17 {
+			for i, v := range []byte(s) {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
+			seed = foldAndCompress([]byte(s))
+		}
 	case []byte:
-		seed = foldAndCompress(s)
+		if len(s) < 17 {
+			for i, v := range s {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
+			seed = foldAndCompress(s)
+		}
 	case float32:
 		seed = [2]uint64{uint64(*(*uint32)(unsafe.Pointer(&s)) << 9 >> 9), uint64(0)}
 	case float64:
@@ -243,30 +255,28 @@ func (l *Breeze128) roundTrip() {
 	l.bitshift = (l.bitshift + 1) % 21
 
 	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
+	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))
+	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))
+	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))
+	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))
 
 	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[0]
+	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[3]
+	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+
+	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[1]
+	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[3]
 
 	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[3]
+	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[1]
+	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[2]
 
-	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-
-	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[1]
+	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[3]
+	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+	l.state[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[1]
 
 	// obfuscate states 0..3
 	tmp = l.state[0]
@@ -400,18 +410,18 @@ func (l *Breeze128) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 
 	switch s := s.(type) {
 	case string:
-		if len(s) < 8 {
-			return hash, initSeedToShort
+		seed, err = initr(s)
+		if err != nil {
+			return hash, err
 		}
-		seed = foldAndCompress([]byte(s))
 		padLen = 1 + len(s)/lenInBytes
 		pad = make([]byte, padLen*lenInBytes)
 		copy(pad[len(s)%lenInBytes:], []byte(s))
 	case []byte:
-		if len(s) < 8 {
-			return hash, initSeedArrayToShort
+		seed, err = initr(s)
+		if err != nil {
+			return hash, err
 		}
-		seed = foldAndCompress(s)
 		padLen = 1 + len(s)/lenInBytes
 		pad = make([]byte, padLen*lenInBytes)
 		copy(pad[len(s)%lenInBytes:], s)
@@ -470,37 +480,21 @@ func (l *Breeze256) Init(s interface{}) (err error) {
 	var seed [4]uint64
 	switch s := s.(type) {
 	case string:
-		if len(s) < 8 {
-			return initSeedToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress([]byte(s))
-			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
-		}
-		if len(s) > 31 {
+		if len(s) < 33 {
+			for i, v := range []byte(s) {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			seed1 := foldAndCompress([]byte(s[0 : len(s)/2]))
 			seed2 := foldAndCompress([]byte(s[len(s)/2:]))
 			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
 		}
 	case []byte:
-		if len(s) < 8 {
-			return initSeedArrayToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress(s)
-			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[len(s)-16:])
-			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
-		}
-		if len(s) > 31 {
+		if len(s) < 33 {
+			for i, v := range s {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			seed1 := foldAndCompress([]byte(s[0 : len(s)/2]))
 			seed2 := foldAndCompress([]byte(s[len(s)/2:]))
 			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
@@ -609,60 +603,60 @@ func (l *Breeze256) roundTrip() {
 		l.state12 = 1.0 - newstate1
 	}
 
-	l.bitshift = (l.bitshift + 1) % 21
+	l.bitshift = (l.bitshift + 1) % 19
 
 	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
+	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))
+	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))
+	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))
+	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))
 
-	l.state[16] = l.state[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))
-	l.state[17] = l.state[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))
-	l.state[18] = l.state[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))
-	l.state[19] = l.state[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[18]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[16]
+	l.state[16] = l.state[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))
+	l.state[17] = l.state[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))
+	l.state[18] = l.state[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))
+	l.state[19] = l.state[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))
 
 	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[18]
+	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[19]
+	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[16]
 
 	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[16]
+	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[17]
+	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[18]
 
 	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[15] = (l.state[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-
-	l.bitshift = (l.bitshift + 1) % 21
+	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[16]
+	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[17]
+	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[18]
 
 	l.bitshift++
-	l.state[20] = (l.state[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[21] = (l.state[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[22] = (l.state[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[0]
+	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[19]
+	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[16]
+	l.state[15] = (l.state[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[17]
+
+	l.bitshift = (l.bitshift + 1) % 19
 
 	l.bitshift++
-	l.state[23] = (l.state[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[24] = (l.state[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[25] = (l.state[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[3]
+	l.state[20] = (l.state[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+	l.state[21] = (l.state[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[3]
+	l.state[22] = (l.state[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))) ^ l.state[0]
 
 	l.bitshift++
-	l.state[26] = (l.state[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[27] = (l.state[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[28] = (l.state[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[2]
+	l.state[23] = (l.state[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[1]
+	l.state[24] = (l.state[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+	l.state[25] = (l.state[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))) ^ l.state[3]
 
 	l.bitshift++
-	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[1]
+	l.state[26] = (l.state[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+	l.state[27] = (l.state[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))) ^ l.state[1]
+	l.state[28] = (l.state[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+
+	l.bitshift++
+	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[3]
+	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[1]
 
 	// obfuscate states 0..3 16..19
 	tmp = l.state[0]
@@ -801,19 +795,11 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 
 	switch s := s.(type) {
 	case string:
-		if len(s) < 8 {
-			return hash, initSeedToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress([]byte(s))
-			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
-		}
-		if len(s) > 31 {
+		if len(s) < 33 {
+			for i, v := range []byte(s) {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			seed1 := foldAndCompress([]byte(s[0 : len(s)/2]))
 			seed2 := foldAndCompress([]byte(s[len(s)/2:]))
 			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
@@ -822,19 +808,11 @@ func (l *Breeze256) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		pad = make([]byte, padLen*lenInBytes)
 		copy(pad[len(s)%lenInBytes:], []byte(s))
 	case []byte:
-		if len(s) < 8 {
-			return hash, initSeedArrayToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress(s)
-			seed = [4]uint64{seed1[0], seed1[1], 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[len(s)-16:])
-			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
-		}
-		if len(s) > 31 {
+		if len(s) < 33 {
+			for i, v := range s {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			seed1 := foldAndCompress(s[0 : len(s)/2])
 			seed2 := foldAndCompress(s[len(s)/2:])
 			seed = [4]uint64{seed1[0], seed1[1], seed2[0], seed2[1]}
@@ -901,32 +879,11 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 	var seed [8]uint64
 	switch s := s.(type) {
 	case string:
-		if len(s) < 8 {
-			return initSeedToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress([]byte(s))
-			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
-		}
-		if len(s) > 31 && len(s) < 48 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[16:32]))
-			seed3 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
-		}
-		if len(s) > 47 && len(s) < 64 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[16:32]))
-			seed3 := foldAndCompress([]byte(s[32:48]))
-			seed4 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
-		}
-		if len(s) > 63 {
+		if len(s) < 63 {
+			for i, v := range []byte(s) {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			l := len(s) / 4
 			seed1 := foldAndCompress([]byte(s[0:l]))
 			seed2 := foldAndCompress([]byte(s[l : 2*l]))
@@ -935,32 +892,11 @@ func (l *Breeze512) Init(s interface{}) (err error) {
 			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
 		}
 	case []byte:
-		if len(s) < 8 {
-			return initSeedToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress(s)
-			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
-		}
-		if len(s) > 31 && len(s) < 48 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[16:32])
-			seed3 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
-		}
-		if len(s) > 47 && len(s) < 64 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[16:32])
-			seed3 := foldAndCompress(s[32:48])
-			seed4 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
-		}
-		if len(s) > 63 {
+		if len(s) < 63 {
+			for i, v := range s {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			l := len(s) / 4
 			seed1 := foldAndCompress(s[0:l])
 			seed2 := foldAndCompress(s[l : 2*l])
@@ -1135,60 +1071,60 @@ func (l *Breeze512) roundTrip() {
 		l.state24 = 1.0 - newstate1
 	}
 
-	l.bitshift = (l.bitshift + 1) % 21
+	l.bitshift = (l.bitshift + 1) % 19
 
 	tmp := l.state[0]
-	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))
-	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))
-	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))
-	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))
+	l.state[0] = l.state[1] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))
+	l.state[1] = l.state[2] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))
+	l.state[2] = l.state[3] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))
+	l.state[3] = l.state[4] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))
 
-	l.state[16] = l.state[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))
-	l.state[17] = l.state[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))
-	l.state[18] = l.state[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))
-	l.state[19] = l.state[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[18]
-	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[16]
+	l.state[16] = l.state[17] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))
+	l.state[17] = l.state[18] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))
+	l.state[18] = l.state[19] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))
+	l.state[19] = l.state[20] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))
 
 	l.bitshift++
-	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.state[4] = (l.state[5] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[18]
+	l.state[5] = (l.state[6] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[19]
+	l.state[6] = (l.state[7] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[16]
 
 	l.bitshift++
-	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[18]
+	l.state[7] = (l.state[8] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[16]
+	l.state[8] = (l.state[9] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[17]
+	l.state[9] = (l.state[10] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[18]
 
 	l.bitshift++
-	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift)))) ^ l.state[19]
-	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift)))) ^ l.state[16]
-	l.state[15] = (l.state[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<11>>(12+l.bitshift)))) ^ l.state[17]
-
-	l.bitshift = (l.bitshift + 1) % 21
+	l.state[10] = (l.state[11] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[16]
+	l.state[11] = (l.state[12] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12>>(13+l.bitshift)))) ^ l.state[17]
+	l.state[12] = (l.state[13] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[18]
 
 	l.bitshift++
-	l.state[20] = (l.state[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[21] = (l.state[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[22] = (l.state[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[0]
+	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[19]
+	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ l.state[16]
+	l.state[15] = (l.state[16] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[17]
+
+	l.bitshift = (l.bitshift + 1) % 19
 
 	l.bitshift++
-	l.state[23] = (l.state[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[24] = (l.state[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[2]
-	l.state[25] = (l.state[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[3]
+	l.state[20] = (l.state[21] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+	l.state[21] = (l.state[22] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[3]
+	l.state[22] = (l.state[23] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))) ^ l.state[0]
 
 	l.bitshift++
-	l.state[26] = (l.state[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[27] = (l.state[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<11>>(12+l.bitshift)))) ^ l.state[1]
-	l.state[28] = (l.state[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[2]
+	l.state[23] = (l.state[24] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[1]
+	l.state[24] = (l.state[25] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+	l.state[25] = (l.state[26] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))) ^ l.state[3]
 
 	l.bitshift++
-	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<11>>(12+l.bitshift)))) ^ l.state[3]
-	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<11>>(12+l.bitshift)))) ^ l.state[0]
-	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<11>>(12+l.bitshift)))) ^ l.state[1]
+	l.state[26] = (l.state[27] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+	l.state[27] = (l.state[28] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12>>(13+l.bitshift)))) ^ l.state[1]
+	l.state[28] = (l.state[29] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[2]
+
+	l.bitshift++
+	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[3]
+	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[0]
+	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[1]
 
 	// obfuscate states 0..3 16..19
 	tmp = l.state[0]
@@ -1201,60 +1137,60 @@ func (l *Breeze512) roundTrip() {
 	l.state[3] ^= l.state[19]
 	l.state[19] ^= tmp
 
-	l.bitshift = (l.bitshift + 1) % 21
+	l.bitshift = (l.bitshift + 1) % 19
 
 	tmp = l.state[32]
-	l.state[32] = l.state[33] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))
-	l.state[33] = l.state[34] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))
-	l.state[34] = l.state[35] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift)))
-	l.state[35] = l.state[36] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))
+	l.state[32] = l.state[33] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12>>(13+l.bitshift)))
+	l.state[33] = l.state[34] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12>>(13+l.bitshift)))
+	l.state[34] = l.state[35] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12>>(13+l.bitshift)))
+	l.state[35] = l.state[36] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12>>(13+l.bitshift)))
 
-	l.state[48] = l.state[49] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))
-	l.state[49] = l.state[50] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))
-	l.state[50] = l.state[51] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))
-	l.state[51] = l.state[52] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))
-
-	l.bitshift++
-	l.state[36] = (l.state[37] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))) ^ l.state[50]
-	l.state[37] = (l.state[38] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))) ^ l.state[51]
-	l.state[38] = (l.state[39] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift)))) ^ l.state[48]
+	l.state[48] = l.state[49] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12>>(13+l.bitshift)))
+	l.state[49] = l.state[50] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12>>(13+l.bitshift)))
+	l.state[50] = l.state[51] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12>>(13+l.bitshift)))
+	l.state[51] = l.state[52] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12>>(13+l.bitshift)))
 
 	l.bitshift++
-	l.state[39] = (l.state[40] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))) ^ l.state[49]
-	l.state[40] = (l.state[41] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))) ^ l.state[50]
-	l.state[41] = (l.state[42] ^ (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift))) ^ l.state[51]
+	l.state[36] = (l.state[37] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12>>(13+l.bitshift)))) ^ l.state[50]
+	l.state[37] = (l.state[38] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12>>(13+l.bitshift)))) ^ l.state[51]
+	l.state[38] = (l.state[39] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12>>(13+l.bitshift)))) ^ l.state[48]
 
 	l.bitshift++
-	l.state[42] = (l.state[43] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))) ^ l.state[48]
-	l.state[43] = (l.state[44] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<11>>(12+l.bitshift)))) ^ l.state[49]
-	l.state[44] = (l.state[45] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))) ^ l.state[50]
+	l.state[39] = (l.state[40] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12>>(13+l.bitshift)))) ^ l.state[49]
+	l.state[40] = (l.state[41] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12>>(13+l.bitshift)))) ^ l.state[50]
+	l.state[41] = (l.state[42] ^ (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12>>(13+l.bitshift))) ^ l.state[51]
 
 	l.bitshift++
-	l.state[45] = (l.state[46] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<11>>(12+l.bitshift)))) ^ l.state[51]
-	l.state[46] = (l.state[47] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<11>>(12+l.bitshift)))) ^ l.state[48]
-	l.state[47] = (l.state[48] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<11>>(12+l.bitshift)))) ^ l.state[49]
-
-	l.bitshift = (l.bitshift + 1) % 21
+	l.state[42] = (l.state[43] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12>>(13+l.bitshift)))) ^ l.state[48]
+	l.state[43] = (l.state[44] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12>>(13+l.bitshift)))) ^ l.state[49]
+	l.state[44] = (l.state[45] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12>>(13+l.bitshift)))) ^ l.state[50]
 
 	l.bitshift++
-	l.state[52] = (l.state[53] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[34]
-	l.state[53] = (l.state[54] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[35]
-	l.state[54] = (l.state[55] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))) ^ l.state[32]
+	l.state[45] = (l.state[46] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state9)))<<12>>(13+l.bitshift)))) ^ l.state[51]
+	l.state[46] = (l.state[47] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state10)))<<12>>(13+l.bitshift)))) ^ l.state[48]
+	l.state[47] = (l.state[48] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state12)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state11)))<<12>>(13+l.bitshift)))) ^ l.state[49]
+
+	l.bitshift = (l.bitshift + 1) % 19
 
 	l.bitshift++
-	l.state[55] = (l.state[56] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))) ^ l.state[33]
-	l.state[56] = (l.state[57] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[34]
-	l.state[57] = (l.state[58] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))) ^ l.state[35]
+	l.state[52] = (l.state[53] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12>>(13+l.bitshift)))) ^ l.state[34]
+	l.state[53] = (l.state[54] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12>>(13+l.bitshift)))) ^ l.state[35]
+	l.state[54] = (l.state[55] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12>>(13+l.bitshift)))) ^ l.state[32]
 
 	l.bitshift++
-	l.state[58] = (l.state[59] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[32]
-	l.state[59] = (l.state[60] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<11>>(12+l.bitshift)))) ^ l.state[33]
-	l.state[60] = (l.state[61] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))) ^ l.state[34]
+	l.state[55] = (l.state[56] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12>>(13+l.bitshift)))) ^ l.state[33]
+	l.state[56] = (l.state[57] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12>>(13+l.bitshift)))) ^ l.state[34]
+	l.state[57] = (l.state[58] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12>>(13+l.bitshift)))) ^ l.state[35]
 
 	l.bitshift++
-	l.state[61] = (l.state[62] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<11>>(12+l.bitshift)))) ^ l.state[35]
-	l.state[62] = (l.state[63] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<11>>(12+l.bitshift)))) ^ l.state[32]
-	l.state[63] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<11>>(12+l.bitshift)))) ^ l.state[33]
+	l.state[58] = (l.state[59] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12>>(13+l.bitshift)))) ^ l.state[32]
+	l.state[59] = (l.state[60] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12>>(13+l.bitshift)))) ^ l.state[33]
+	l.state[60] = (l.state[61] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12>>(13+l.bitshift)))) ^ l.state[34]
+
+	l.bitshift++
+	l.state[61] = (l.state[62] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12>>(13+l.bitshift)))) ^ l.state[35]
+	l.state[62] = (l.state[63] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12>>(13+l.bitshift)))) ^ l.state[32]
+	l.state[63] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12>>(13+l.bitshift)))) ^ l.state[33]
 
 	// obfuscate states 32..35 48..51
 	tmp = l.state[32]
@@ -1393,32 +1329,11 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 
 	switch s := s.(type) {
 	case string:
-		if len(s) < 8 {
-			return hash, initSeedToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress([]byte(s))
-			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
-		}
-		if len(s) > 31 && len(s) < 48 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[16:32]))
-			seed3 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
-		}
-		if len(s) > 47 && len(s) < 64 {
-			seed1 := foldAndCompress([]byte(s[0:16]))
-			seed2 := foldAndCompress([]byte(s[16:32]))
-			seed3 := foldAndCompress([]byte(s[32:48]))
-			seed4 := foldAndCompress([]byte(s[len(s)-16:]))
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
-		}
-		if len(s) > 63 {
+		if len(s) < 63 {
+			for i, v := range []byte(s) {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			l := len(s) / 4
 			seed1 := foldAndCompress([]byte(s[0:l]))
 			seed2 := foldAndCompress([]byte(s[l : 2*l]))
@@ -1430,32 +1345,11 @@ func (l *Breeze512) ShortHash(s interface{}, lenInBytes int) (hash []byte, err e
 		pad = make([]byte, padLen*lenInBytes)
 		copy(pad[len(s)%lenInBytes:], []byte(s))
 	case []byte:
-		if len(s) < 8 {
-			return hash, initSeedArrayToShort
-		}
-		if len(s) > 7 && len(s) < 16 {
-			seed1 := foldAndCompress(s)
-			seed = [8]uint64{seed1[0], seed1[1], 0, 0, 0, 0, 0, 0}
-		}
-		if len(s) > 16 && len(s) < 32 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], 0, 0, 0, 0}
-		}
-		if len(s) > 31 && len(s) < 48 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[16:32])
-			seed3 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], 0, 0}
-		}
-		if len(s) > 47 && len(s) < 64 {
-			seed1 := foldAndCompress(s[0:16])
-			seed2 := foldAndCompress(s[16:32])
-			seed3 := foldAndCompress(s[32:48])
-			seed4 := foldAndCompress(s[len(s)-16:])
-			seed = [8]uint64{seed1[0], seed1[1], seed2[0], seed2[1], seed3[0], seed3[1], seed4[0], seed4[1]}
-		}
-		if len(s) > 63 {
+		if len(s) < 63 {
+			for i, v := range s {
+				seed[i/8] = seed[i/8]<<8 + uint64(v)
+			}
+		} else {
 			l := len(s) / 4
 			seed1 := foldAndCompress(s[0:l])
 			seed2 := foldAndCompress(s[l : 2*l])
