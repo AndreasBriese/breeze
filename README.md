@@ -9,7 +9,7 @@
 
 2nd revision (7/11/2014): 
   - Breeze32 / Breeze76 removed / replaced by Breeze128/Breeze256
-  - New Breeze128/Breeze256 structs to accept 128 bit / 256 bit seed/keys and use 4 / 8 logistic maps (LM) functions to produce 128 Byte / 256 Byte output on each roundTrip
+  - New Breeze128/Breeze256 structs to accept 128 bit / 256 bit seed/keys and use 6 / 12 logistic maps (LM) functions to produce 128 Byte / 256 Byte output on each roundTrip
   - Name-scheme changed
   - Seed processing reviewed / splitts uint64 bitwise in three parts: 2&times; 1<sup>21</sup>, 1&times;1<sup>22</sup>
   - Breeze128 and Breeze256 are intended for use with up to 128bit/256bit input length i.e. with BLAKE2b, SHA2 or SHA3 Hashes; Breeze64_32 &amp; Breeze128_72 are proof of concept schemes (see _breeze._go).
@@ -23,6 +23,11 @@
 **2014/11/09 20:00 Last revision ensured proper seeding input size for Breeze256/51. Make sure you have the current version running** 
 
 **Note 2014/11/10** Experimental CSPRNG based on Breeze128 added: BreezeCS128. (re-)Seeds from crypto/rand. 
+
+4th revision (stable) v.1.1.1:
+  - Breeze128/CS128/256/512 have number of LMs corresponding to their inner states: 6 / 6 / 12 / 24 (3 inner states from 1 uint64 word input) (This solved a problem of defining a minimum input length)
+  - Number of Mantissa bits used for output states allways equal or less than last 51 Mantissa bits (Little - Endian)
+  
 
 ---
 
