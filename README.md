@@ -6,6 +6,20 @@
 #####2014/11/1   
 #####eduToolbox@Bri-C GmbH, Sarstedt
 </center> 
+  
+---
+
+<b>Breeze</b> represents a new family of deterministic random number generators aca pseudo random number generators (PRNGs) based on a combination of two or more "logistic maps" (LM) in chaotic state. 
+
+See https://github.com/AndreasBriese/breeze for **breeze** reference implementation in go/golang (x86 / Little-Endian). 
+
+---
+
+WARNING: This code and documentation is written by a non-mathematician &amp; is eventually drawn up in lousy english.
+
+---
+
+**History**
 
 2nd revision (7/11/2014): 
   - Breeze32 / Breeze76 removed / replaced by Breeze128/Breeze256
@@ -18,26 +32,15 @@
   - added Breeze512 (16 LMs) to provide length of keyspace: 512bit.
   - parenthesis in roundTrip() ()all functions corr; statenumbers corrected to fit the new scheme
 
-~~**Note:** Breeze512 is not NIST tested so far, will do in the next days and will provide testresults below.(Its the same new scheme of AIX - should pass) update: Breeze512 passed 2 of three NIST checks (failed once with 94/100 on NonOverlappingTemplate)~~ update: corrected for 1 bit shorter part of the Mantissa solved this NIST failures. (passed 12 NIST-Tests so far)  
+~~Note: Breeze512 is not NIST tested so far, will do in the next days and will provide testresults below.(Its the same new scheme of AIX - should pass) update: Breeze512 passed 2 of three NIST checks (failed once with 94/100 on NonOverlappingTemplate)~~ update: corrected for 1 bit shorter part of the Mantissa solved this NIST failures. (passed 12 NIST-Tests so far)  
 
-**2014/11/09 20:00 Last revision ensured proper seeding input size for Breeze256/51. Make sure you have the current version running** 
+2014/11/09 20:00 Last revision ensured proper seeding input size for Breeze256/51. Make sure you have the current version running 
 
-**Note 2014/11/10** Experimental CSPRNG based on Breeze128 added: BreezeCS128. (re-)Seeds from crypto/rand. 
+Note 2014/11/10 Experimental CSPRNG based on Breeze128 added: BreezeCS128. (re-)Seeds from crypto/rand. 
 
 4th revision (stable) v.1.1.1:
   - Breeze128/CS128/256/512 have number of LMs corresponding to their inner states: 6 / 6 / 12 / 24 (3 inner states from 1 uint64 word input) (This solved a problem of defining a minimum input length)
   - Number of Mantissa bits used for output states allways equal or less than last 51 Mantissa bits (Little - Endian)
-  
-
----
-
-<b>Breeze</b> represents a new family of deterministic random number generators aca pseudo random number generators (PRNGs) based on a combination of two or more "logistic maps" (LM) in chaotic state. 
-
-See https://github.com/AndreasBriese/breeze for **breeze** reference implementation in go/golang (x86 / Little-Endian). 
-
----
-
-WARNING: This code and documentation is written by a non-mathematician &amp; is eventually drawn up in lousy english.
 
 ---
 
@@ -125,6 +128,13 @@ used memory (struct) | ~186 Byte | ~362 Byte | ~715 Byte | ~186 Byte |
 temp memory alloc | ~234 Byte | ~458 Byte | ~907 Byte | ~250 Byte | 
 
 (temp memory alloc: estimation from roundTrip() mem use; actual use might be higher)
+
+
+####Tests
+
+The testframework beside NIST statitical suite can be found her:
+https://github.com/AndreasBriese/breezeTests
+
 
 
 ---
