@@ -234,7 +234,7 @@ func (l *Breeze128) roundTrip() {
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 {
+	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 {
 	case 0:
 		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift%7))
 		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state5))) << 11 >> (12 + l.bitshift%7))
@@ -278,13 +278,6 @@ func (l *Breeze128) roundTrip() {
 	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[2]
 	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ hop
 	l.state[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[0]
-
-	// obfuscate states 0..3
-	tmp = l.state[0]
-	l.state[0] ^= l.state[2]
-	l.state[1] ^= l.state[3]
-	l.state[2] ^= tmp
-	l.state[3] ^= l.state[1]
 
 }
 
@@ -576,7 +569,7 @@ func (l *Breeze256) roundTrip() {
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 * newstate7 * newstate8 {
+	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 * newstate7 * newstate8 * newstate9 * newstate10 * newstate11 * newstate12 {
 	case 0:
 		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift%7))
 		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state9))) << 11 >> (12 + l.bitshift%7))
@@ -658,17 +651,6 @@ func (l *Breeze256) roundTrip() {
 	l.state[29] = (l.state[30] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state5)))<<12>>(13+l.bitshift)))) ^ l.state[3]
 	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[0]
 	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[1]
-
-	// obfuscate states 0..3 16..19
-	tmp = l.state[0]
-	l.state[0] ^= l.state[16]
-	l.state[16] ^= l.state[1]
-	l.state[1] ^= l.state[17]
-	l.state[17] ^= l.state[2]
-	l.state[2] ^= l.state[18]
-	l.state[18] ^= l.state[3]
-	l.state[3] ^= l.state[19]
-	l.state[19] ^= tmp
 
 }
 
@@ -1021,7 +1003,7 @@ func (l *Breeze512) roundTrip() {
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 * newstate7 * newstate8 * newstate9 * newstate10 * newstate11 * newstate12 * newstate13 * newstate14 * newstate15 * newstate16 {
+	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 * newstate7 * newstate8 * newstate9 * newstate10 * newstate11 * newstate12 * newstate13 * newstate14 * newstate15 * newstate16 * newstate17 * newstate18 * newstate19 * newstate20 * newstate21 * newstate22 * newstate23 * newstate24 {
 	case 0:
 		s1 := (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<11>>(12+l.bitshift%7)) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<11>>(12+l.bitshift%7))
 		s1 += (uint64)((*(*uint64)(unsafe.Pointer(&l.state9))) << 11 >> (12 + l.bitshift%7))
@@ -1127,17 +1109,6 @@ func (l *Breeze512) roundTrip() {
 	l.state[30] = (l.state[31] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state6)))<<12>>(13+l.bitshift)))) ^ l.state[0]
 	l.state[31] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state8)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state7)))<<12>>(13+l.bitshift)))) ^ l.state[1]
 
-	// obfuscate states 0..3 16..19
-	tmp = l.state[0]
-	l.state[0] ^= l.state[16]
-	l.state[16] ^= l.state[1]
-	l.state[1] ^= l.state[17]
-	l.state[17] ^= l.state[2]
-	l.state[2] ^= l.state[18]
-	l.state[18] ^= l.state[3]
-	l.state[3] ^= l.state[19]
-	l.state[19] ^= tmp
-
 	l.bitshift = (l.bitshift + 1) % 19
 
 	tmp = l.state[32]
@@ -1192,17 +1163,6 @@ func (l *Breeze512) roundTrip() {
 	l.state[61] = (l.state[62] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state13)))<<12>>(13+l.bitshift)))) ^ l.state[35]
 	l.state[62] = (l.state[63] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state14)))<<12>>(13+l.bitshift)))) ^ l.state[32]
 	l.state[63] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state16)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state15)))<<12>>(13+l.bitshift)))) ^ l.state[33]
-
-	// obfuscate states 32..35 48..51
-	tmp = l.state[32]
-	l.state[32] ^= l.state[48]
-	l.state[48] ^= l.state[33]
-	l.state[33] ^= l.state[49]
-	l.state[49] ^= l.state[34]
-	l.state[34] ^= l.state[50]
-	l.state[50] ^= l.state[35]
-	l.state[35] ^= l.state[51]
-	l.state[51] ^= tmp
 
 }
 
