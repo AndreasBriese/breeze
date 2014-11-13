@@ -163,7 +163,7 @@ func (l *BreezeCS128) roundTrip() {
 	// newstate_n := (1.0 - l.state_n)
 	// newstate_n *= 3.83 * l.state_n
 
-	switch newstate1 * newstate2 * newstate3 * newstate4 {
+	switch newstate1 * newstate2 * newstate3 * newstate4 * newstate5 * newstate6 {
 	case 0:
 		crand, err := csrand()
 		if err != nil {
@@ -206,13 +206,6 @@ func (l *BreezeCS128) roundTrip() {
 	l.state[13] = (l.state[14] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<12) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state1)))<<12>>(13+l.bitshift)))) ^ l.state[2]
 	l.state[14] = (l.state[15] ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state2)))<<12>>(13+l.bitshift)))) ^ hop
 	l.state[15] = (tmp ^ ((uint64)((*(*uint64)(unsafe.Pointer(&l.state4)))<<30) + (uint64)((*(*uint64)(unsafe.Pointer(&l.state3)))<<12>>(13+l.bitshift)))) ^ l.state[0]
-
-	// obfuscate states 0..3
-	tmp = l.state[0]
-	l.state[0] ^= l.state[2]
-	l.state[1] ^= l.state[3]
-	l.state[2] ^= tmp
-	l.state[3] ^= l.state[1]
 
 }
 
