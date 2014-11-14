@@ -111,7 +111,7 @@ roundTrip() checks for pathological state == 0 and will in case automatically re
 <img src="https://github.com/AndreasBriese/breezeTests/blob/master/RandNorm.png" width="350px">
 <img src="https://github.com/AndreasBriese/breezeTests/blob/master/randPad.png" width="700px">
 [RandDbl()](https://github.com/AndreasBriese/breezeTests/blob/master/RandDbl.png)... [RandNorm()](https://github.com/AndreasBriese/breezeTests/blob/master/RandNorm.png)...
-[RandNorm()](https://github.com/AndreasBriese/breezeTests/blob/master/randPad.png)
+[random Bytes (RGBA Alpha=4th Byte)](https://github.com/AndreasBriese/breezeTests/blob/master/randPad.png)
 
 **Note:** Byte / ByteMP do not check if breeze had been initialized! Make sure you did so, before calling!
 
