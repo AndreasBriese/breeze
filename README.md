@@ -107,6 +107,9 @@ roundTrip() checks for pathological state == 0 and will in case automatically re
 - XOR(&out, &in, &key) seeds the breeze generator with the *key* bytes and bytes of *in* are xored with the generator bytes and an error.
 - ShortHash(&m, hashlen) returns a hash of length *hashlen* deriving from multiple roundsTrips and an error. 
 
+[RandDbl()](https://github.com/AndreasBriese/breezeTests/blob/master/RandDbl.png)
+[RandNorm()](https://github.com/AndreasBriese/breezeTests/blob/master/RandNorm.png)
+
 **Note:** Byte / ByteMP do not check if breeze had been initialized! Make sure you did so, before calling!
 
 **Note:** RandIntn and RandDbl are thread/multiprocessing save (mutex.locked). Must be initialized before call. This comes at the cost of about 80 times slower number generation than Byte() and about 8 times (sic! from 8 bytes) slower than ByteMP(). 
