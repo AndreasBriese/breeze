@@ -109,7 +109,7 @@ roundTrip() checks for pathological state == 0 and will in case automatically re
 
 <img src="https://github.com/AndreasBriese/breezeTests/blob/master/RandDbl.png" width="350px">
 <img src="https://github.com/AndreasBriese/breezeTests/blob/master/RandNorm.png" width="350px">
-<img src="https://github.com/AndreasBriese/breezeTests/blob/master/RandNorm.png" width="700px">
+<img src="https://github.com/AndreasBriese/breezeTests/blob/master/randPad.png" width="700px">
 [RandDbl()](https://github.com/AndreasBriese/breezeTests/blob/master/RandDbl.png)... [RandNorm()](https://github.com/AndreasBriese/breezeTests/blob/master/RandNorm.png)...
 [RandNorm()](https://github.com/AndreasBriese/breezeTests/blob/master/randPad.png)
 
