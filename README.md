@@ -19,6 +19,10 @@ WARNING: This code and documentation is written by a non-mathematician &amp; is 
 
 ---
 
+<center>See <b>breeze.pdf</b> for a short description of the algorithm.</center>
+
+---
+
 **History**
 
 2nd revision (7/11/2014): 
