@@ -1,4 +1,16 @@
-<center>
+---
+---
+
+__PLEASE use the newer implemetation @ https://github.com/AndreasBriese/breeze32__
+
+---
+---
+
+
+
+
+Kind of historic .....
+
 ##"Drain Random from Chaos."
 ##Breeze - a new family of fast CB-PRNG
 
